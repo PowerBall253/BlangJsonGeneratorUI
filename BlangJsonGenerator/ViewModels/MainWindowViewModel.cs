@@ -1,0 +1,551 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Reactive;
+using System.Runtime.InteropServices;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Collections;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using ReactiveUI;
+using BlangParser;
+
+namespace BlangJsonGenerator.ViewModels
+{
+    public class MainWindowViewModel : ViewModelBase
+    {
+        // Currently opened blang file
+        public BlangFile? BlangFile;
+
+        // Blang strings view for data grid
+        private DataGridCollectionView? _blangStringsView;
+
+        public DataGridCollectionView? BlangStringsView
+        {
+            get => _blangStringsView;
+            set => this.RaiseAndSetIfChanged(ref _blangStringsView, value);
+        }
+
+        // App title
+        private string _appTitle = "BlangJsonGenerator";
+
+        public string AppTitle
+        {
+            get => _appTitle;
+            set => this.RaiseAndSetIfChanged(ref _appTitle, value);
+        }
+
+        // If true, there's at least one modified blang string
+        private bool _anyModified = false;
+
+        public bool AnyModified
+        {
+            get => _anyModified;
+            set => this.RaiseAndSetIfChanged(ref _anyModified, value);
+        }
+
+        // If ture, there is a blang file loaded
+        private bool _isBlangLoaded = false;
+
+        public bool IsBlangLoaded
+        {
+            get => _isBlangLoaded;
+            set => this.RaiseAndSetIfChanged(ref _isBlangLoaded, value);
+        }
+
+        // If true, there are unsaved changes
+        public bool UnsavedChanges = false;
+
+        // Name of the language we're editing
+        private string _blangLanguage = "";
+
+        // If true, the program is running on Windows
+        public bool IsNotMacOs
+        {
+            get => !RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+        }
+
+        // Index to set for next new added string
+        private int _newStringIndex = 0;
+
+        // Search bar filter for data grid
+        private string _stringFilter = "";
+
+        // If false, search box needs to be initialized
+        private bool _isSearchBoxInit;
+
+        // Open file dialog and return selected file
+        private async Task<string> OpenFileDialog(string title, string extension)
+        {
+            // Open file dialog
+            var fileDialog = new OpenFileDialog()
+            {
+                Title = title,
+                AllowMultiple = false,
+                Filters = new List<FileDialogFilter>()
+                {
+                    new FileDialogFilter()
+                    {
+                        Extensions = new List<string>() { extension }
+                    }
+                }
+            };
+
+            // Get selected file
+            string[]? results = await fileDialog.ShowAsync((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow);
+
+            if (results == null || results.Length == 0)
+            {
+                return "";
+            }
+
+            return results.FirstOrDefault(str => !string.IsNullOrEmpty(str))!;
+        }
+
+        // Open and read the given blang file
+        public bool OpenBlangFile(string? filePath)
+        {
+            // Reset values
+            BlangStringsView = null;
+            BlangFile = null;
+            UnsavedChanges = false;
+            AnyModified = false;
+
+            if (filePath != null)
+            {
+                // Parse blang file
+                try
+                {
+                    var blangFileBytes = File.ReadAllBytes(filePath);
+                    _blangLanguage = Path.GetFileNameWithoutExtension(filePath);
+                    var decryptedBlangFile = BlangDecrypt.IdCrypt(blangFileBytes, $"strings/{_blangLanguage}.blang", true);
+                    BlangFile = BlangFile.ParseFromMemory(decryptedBlangFile);
+                }
+                catch
+                {
+                    try
+                    {
+                        BlangFile = BlangFile.Parse(filePath);
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                }
+
+                if (BlangFile == null || BlangFile.Strings.Count == 0)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                filePath = "New file";
+
+                // Init new blang file
+                BlangFile = new BlangFile()
+                {
+                    UnknownData = 0,
+                    Strings = new List<BlangString>()
+                    {
+                        new BlangString(0, $"#new_string_{_newStringIndex}", $"#new_string_{_newStringIndex}", "", "", "", false)
+                    }
+                };
+
+                _newStringIndex += 1;
+            }
+
+            // Set blang loaded to true
+            IsBlangLoaded = true;
+
+            // Initialize blang strings view for data grid
+            BlangStringsView = new DataGridCollectionView(BlangFile.Strings);
+
+            // Deselect selected row
+            var stringGrid = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.FindControl<DataGrid>("StringGrid");
+            stringGrid.SelectedItem = null;
+
+            // Initialize filtering system for search bar
+            _stringFilter = "";
+            var searchBox = (Application.Current.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.FindControl<TextBox>("SearchBox");
+            searchBox.IsEnabled = true;
+            searchBox.Text = "";
+            BlangStringsView.Filter = bs => ((BlangString)bs).Identifier.Contains(_stringFilter) || ((BlangString)bs).Text.Contains(_stringFilter);
+
+            // Init search bar
+            if (!_isSearchBoxInit)
+            {
+                _isSearchBoxInit = true;
+                searchBox.GetObservable(TextBox.TextProperty).Subscribe(text =>
+                {
+                    _stringFilter = text;
+                    BlangStringsView.Refresh();
+                    stringGrid.SelectedItem = null;
+                });
+            }
+
+            // Init search button
+            var addButton = (Application.Current.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.FindControl<Button>("AddButton");
+            addButton.IsEnabled = true;
+
+            // Add filename to app title
+            AppTitle = "BlangJsonGenerator - " + Path.GetFileName(filePath);
+
+            return true;
+        }
+
+        // Load JSON changes into grid
+        public bool LoadJson(string filePath)
+        {
+            // Read and serialize JSON
+            BlangJson blangJson;
+
+            try
+            {
+                var blangJsonString = File.ReadAllText(filePath);
+                blangJson = JsonSerializer.Deserialize<BlangJson>(blangJsonString, new JsonSerializerOptions()
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                    ReadCommentHandling = JsonCommentHandling.Skip,
+                    AllowTrailingCommas = true
+                })!;
+
+                if (blangJson == null || blangJson.Strings == null)
+                {
+                    throw new Exception();
+                }
+            }
+            catch
+            {
+                return false;
+            }
+
+            // Assign changes from JSON
+            AnyModified = false;
+
+            foreach (var blangJsonString in blangJson.Strings)
+            {
+                // Find equivalent string in BlangFile.Strings
+                bool found = false;
+
+                foreach (var blangString in BlangFile!.Strings)
+                {
+                    if (blangString.Identifier.Equals(blangJsonString.Name))
+                    {
+                        found = true;
+                        blangString.Text = blangJsonString.Text;
+
+                        if (!blangString.Identifier.Equals(blangString.OriginalIdentifier) || !blangString.Text.Equals(blangString.OriginalText))
+                        {
+                            blangString.Modified = true;
+
+                            // Modified string, set any modified to true
+                            AnyModified = true;
+                        }
+                        else
+                        {
+                            blangString.Modified = false;
+                        }
+
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    BlangFile.Strings.Add(new BlangString(0, blangJsonString.Name, blangJsonString.Name, blangJsonString.Text, blangJsonString.Text, "", true));
+                }
+            }
+
+            // Check if there's any modified string
+            if (!AnyModified)
+            {
+                foreach (var blangString in BlangFile!.Strings)
+                {
+                    if (blangString.Modified)
+                    {
+                        AnyModified = true;
+                        break;
+                    }
+                }
+            }
+
+            // Refresh view
+            BlangStringsView!.Refresh();
+            var stringGrid = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.FindControl<DataGrid>("StringGrid");
+            stringGrid.SelectedItem = null;
+
+            return true;
+        }
+
+        // Save changes
+        private bool SaveToJson(string filePath)
+        {
+            // Create object to serialize
+            var blangJsonObject = new BlangJson()
+            {
+                Strings = new List<BlangJsonString>()
+            };
+
+            // Add modified strings to object
+            foreach (var blangString in BlangFile!.Strings)
+            {
+                if (blangString.Modified)
+                {
+                    blangJsonObject.Strings.Add(new BlangJsonString()
+                    {
+                        Name = blangString.Identifier,
+                        Text = blangString.Text.Replace("\r\n", "\n")
+                    });
+                }
+            }
+
+            // Serialize
+            byte[] modJson = JsonSerializer.SerializeToUtf8Bytes(blangJsonObject, new JsonSerializerOptions()
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            });
+
+            // Write serialized JSON to file
+            try
+            {
+                File.WriteAllBytes(filePath, modJson);
+            }
+            catch
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        // Constructor
+        public MainWindowViewModel()
+        {
+            // Opens blang file and loads it into grid
+            OpenBlangCommand = ReactiveCommand.CreateFromTask(async () =>
+            {
+                if (UnsavedChanges && AnyModified)
+                {
+                    // Confirmation message box
+                    var confirm = await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", Views.MessageBox.MessageButtons.YesCancel);
+
+                    if (confirm == Views.MessageBox.MessageResult.Cancel)
+                    {
+                        return;
+                    }
+                }
+
+                // Get filepath
+                string filePath = await OpenFileDialog("Select the .blang file to load", "blang");
+
+                if (String.IsNullOrEmpty(filePath))
+                {
+                    return;
+                }
+
+                // Open blang file
+                if (!OpenBlangFile(filePath))
+                {
+                    await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", Views.MessageBox.MessageButtons.Ok);
+                    return;
+                }
+            });
+
+            // Create a new blang with one empty entry
+            NewBlangCommand = ReactiveCommand.CreateFromTask(async () =>
+            {
+                if (UnsavedChanges && AnyModified)
+                {
+                    // Confirmation message box
+                    var confirm = await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", Views.MessageBox.MessageButtons.YesCancel);
+
+                    if (confirm == Views.MessageBox.MessageResult.Cancel)
+                    {
+                        return;
+                    }
+                }
+
+                // Create blang file
+                OpenBlangFile(null);
+            });
+
+            // Load JSON file with changes
+            LoadJsonCommand = ReactiveCommand.CreateFromTask(async () =>
+            {
+                if (!IsBlangLoaded)
+                {
+                    return;
+                }
+
+                if (UnsavedChanges && AnyModified)
+                {
+                    // Confirmation message box
+                    var confirm = await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow, "Warning", "Are you sure you want to load a JSON?\nSome unsaved changes may be lost.", Views.MessageBox.MessageButtons.YesCancel);
+
+                    if (confirm == Views.MessageBox.MessageResult.Cancel)
+                    {
+                        return;
+                    }
+                }
+
+                // Get filepath
+                string filePath = await OpenFileDialog("Select the JSON file to load", "json");
+
+                if (String.IsNullOrEmpty(filePath))
+                {
+                    return;
+                }
+
+                // If JSON is loaded with new file, remove blank cell
+                BlangString? stringToRemove = null;
+
+                if (BlangFile!.Strings.Count == 1 && !AnyModified)
+                {
+                    stringToRemove = BlangFile.Strings[0];
+                }
+
+                // Load JSON
+                if (!LoadJson(filePath))
+                {
+                    await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow, "Error", "Failed to load the JSON file.\nMake sure the file is valid, then try again.", Views.MessageBox.MessageButtons.Ok);
+                    return;
+                }
+
+                if (stringToRemove != null)
+                {
+                    BlangFile.Strings.Remove(stringToRemove);
+                }
+
+                // Refresh view
+                BlangStringsView!.Refresh();
+                var stringGrid = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.FindControl<DataGrid>("StringGrid");
+                stringGrid.SelectedItem = null;
+            });
+
+            // Save changes to mod JSON
+            SaveCommand = ReactiveCommand.CreateFromTask(async () =>
+            {
+                if (!AnyModified)
+                {
+                    return;
+                }
+
+                // Open file dialog
+                var fileDialog = new SaveFileDialog()
+                {
+                    Title = "Save JSON mod as...",
+                    InitialFileName = $"{_blangLanguage}.json"
+                };
+
+                // Get save path
+                string? filePath = await fileDialog.ShowAsync((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow);
+
+                if (String.IsNullOrEmpty(filePath))
+                {
+                    return;
+                }
+
+                // Save to JSON
+                if (!SaveToJson(filePath))
+                {
+                    await Views.MessageBox.Show((Application.Current.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow, "Error", "Failed to save the mod JSON.\nTry saving into another folder.", Views.MessageBox.MessageButtons.Ok);
+                    return;
+                }
+
+                // Set unsaved changes to false
+                UnsavedChanges = false;
+            });
+
+            // Close app
+            CloseCommand = ReactiveCommand.CreateFromTask(async () =>
+            {
+                (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.Close();
+            });
+
+            // Open string modding guide in browser
+            OpenGuideCommand = ReactiveCommand.CreateFromTask(async () =>
+            {
+                Process.Start(new ProcessStartInfo()
+                {
+                    FileName = "https://wiki.eternalmods.com/books/2-how-to-create-mods/chapter/string-modding",
+                    UseShellExecute = true
+                });
+            });
+
+            // Open eternal modding hub discord invite in browser
+            JoinHubCommand = ReactiveCommand.CreateFromTask(async () =>
+            {
+                Process.Start(new ProcessStartInfo()
+                {
+                    FileName = "https://discord.com/invite/FCdjqYDr5B",
+                    UseShellExecute = true
+                });
+            });
+
+            // Open 2016+ modding discord invite in browser
+            Join2016Command = ReactiveCommand.CreateFromTask(async () =>
+            {
+                Process.Start(new ProcessStartInfo()
+                {
+                    FileName = "https://discord.com/invite/ymRvQaU",
+                    UseShellExecute = true
+                });
+            });
+
+            // Overrides enter key on data grid
+            EnterKeyCommand = ReactiveCommand.CreateFromTask(async () => { });
+
+            // Add new string to grid
+            AddStringCommand = ReactiveCommand.CreateFromTask(async () =>
+            {
+                if (!IsBlangLoaded)
+                {
+                    return;
+                }
+
+                // Create new string
+                var newBlangString = new BlangString(0, $"#new_string_{_newStringIndex}", $"#new_string_{_newStringIndex}", "", "", "", false);
+                _newStringIndex += 1;
+
+                // Add string and refresh grid to render changes
+                BlangFile!.Strings.Add(newBlangString);
+                BlangStringsView!.Refresh();
+
+                // Scroll into added string
+                var stringGrid = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.FindControl<DataGrid>("StringGrid");
+                stringGrid.ScrollIntoView(newBlangString, null);
+                stringGrid.SelectedItem = newBlangString;
+            });
+        }
+
+        // Commands for binding in MainWindow
+        public ReactiveCommand<Unit, Unit> OpenBlangCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> NewBlangCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> LoadJsonCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> SaveCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> OpenGuideCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> CloseCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> JoinHubCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> Join2016Command { get; }
+
+        public ReactiveCommand<Unit, Unit> EnterKeyCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> AddStringCommand { get; }
+    }
+}

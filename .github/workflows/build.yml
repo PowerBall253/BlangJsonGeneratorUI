@@ -1,0 +1,65 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            filename: BlangJsonGenerator-linux.tar.gz
+
+          - os: macos-latest
+            rid: osx-x64
+            filename: BlangJsonGenerator-osx.zip
+
+          - os: windows-latest
+            rid: win-x64
+            filename: BlangJsonGenerator-win64.zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 6.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet publish -p:PublishProfile=FolderProfile -r ${{ matrix.rid }}
+
+      - name: Create .tar.gz file on linux
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          cd ./BlangJsonGenerator/bin/Release/net6.0/publish/
+          touch ${{ matrix.filename }}
+          tar --exclude=${{ matrix.filename }} --exclude=BlangJsonGenerator.pdb -zcvf ${{ matrix.filename }} .
+
+      - name: Archive Release
+        if: ${{ matrix.os != 'ubuntu-latest' }}
+        uses: thedoctor0/zip-release@master
+        with:
+          type: zip
+          directory: ./BlangJsonGenerator/bin/Release/net6.0/publish/
+          filename: ${{ matrix.filename }}
+          exclusions: '*.pdb'
+
+      - name: Upload zip/tar
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file_glob: true
+          file: '**/${{ matrix.filename }}'
+          tag: ${{ github.ref }}

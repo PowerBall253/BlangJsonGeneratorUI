@@ -1,0 +1,180 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:BlangJsonGenerator.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="BlangJsonGenerator.Views.MainWindow"
+        Icon="/Assets/icon.ico"
+        Title="{Binding AppTitle}"
+        WindowStartupLocation="CenterScreen"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="Transparent"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        DragDrop.AllowDrop="True"
+        Closing="HandleClose">
+
+    <!-- Set MVVM -->
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <!-- Set style properties -->
+    <Window.Styles>
+        <Style Selector="TextBlock.Datagrid">
+            <Setter Property="Foreground" Value="#C8C8C8"/>
+        </Style>
+        <Style Selector="TextBox">
+            <Setter Property="Foreground" Value="#C8C8C8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="FontFamily" Value="/Assets/WenQuanYiZenHei.ttf#WenQuanYi Zen Hei"/>
+        </Style>
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="AreSeparatorsVisible" Value="True"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="SeparatorBrush" Value="Gray"/>
+        </Style>
+        <Style Selector="DataGridCell.Modified">
+            <Setter Property="IsHitTestVisible" Value="False"></Setter>
+        </Style>
+    </Window.Styles>
+
+    <!-- Key bindings -->
+    <Window.KeyBindings>
+        <KeyBinding Command="{Binding OpenBlangCommand}"/>
+		<KeyBinding Command="{Binding NewBlangCommand}"/>
+        <KeyBinding Command="{Binding SaveCommand}"/>
+    </Window.KeyBindings>
+
+    <!-- Set native menu for Linux/macOS -->
+    <NativeMenu.Menu>
+        <NativeMenu>
+            <NativeMenuItem Header="File">
+                <NativeMenu>
+                    <NativeMenuItem Header="New..." Command="{Binding NewBlangCommand}"/>
+                    <NativeMenuItem Header="Open blang file..." Command="{Binding OpenBlangCommand}"/>
+                    <NativeMenuItemSeparator/>
+                    <NativeMenuItem Header="Load string JSON..." Command="{Binding LoadJsonCommand}" IsEnabled="{Binding IsBlangLoaded}"/>
+                    <NativeMenuItemSeparator/>
+                    <NativeMenuItem Header="Save..." Command="{Binding SaveCommand}" IsEnabled="{Binding AnyModified}"/>
+                    <NativeMenuItemSeparator/>
+                    <NativeMenuItem Header="Close" Command="{Binding CloseCommand}"/>
+                </NativeMenu>
+            </NativeMenuItem>
+
+            <NativeMenuItem Header="Help">
+                <NativeMenu>
+                    <NativeMenuItem Header="Open online guide..." Command="{Binding OpenGuideCommand}"/>
+                    <NativeMenuItem Header="Join DE Modding Hub Discord server..." Command="{Binding JoinHubCommand}"/>
+                    <NativeMenuItem Header="Join 2016+ Modding Discord server..." Command="{Binding Join2016Command}"/>
+                </NativeMenu>
+            </NativeMenuItem>
+        </NativeMenu>
+    </NativeMenu.Menu>
+
+    <!-- Main app panel -->
+    <Panel>
+        <!-- Set acrylic look -->
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial
+                    BackgroundSource="Digger"
+                    TintColor="Black"
+                    TintOpacity="1"
+                    MaterialOpacity="0.65" />
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+
+        <DockPanel Name="MainPanel">
+            <!-- App title -->
+            <TextBlock DockPanel.Dock="Top" Name="AppTitle" IsHitTestVisible="False" FontSize="12" FontWeight="SemiBold" Margin="0 10 0 0" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="NoWrap" Text="{Binding AppTitle}"/>
+
+			<!-- Set menu on Windows -->
+            <Menu DockPanel.Dock="Top" Name="WindowsMenu" IsVisible="{Binding IsNotMacOs}">
+                <MenuItem Header="File">
+                    <MenuItem Header="New..." Command="{Binding NewBlangCommand}"/>
+                    <MenuItem Header="Open blang file..." Command="{Binding OpenBlangCommand}"/>
+                    <Separator/>
+                    <MenuItem Header="Load string JSON..." Command="{Binding LoadJsonCommand}" IsEnabled="{Binding IsBlangLoaded}"/>
+                    <Separator/>
+                    <MenuItem Header="Save..." Command="{Binding SaveCommand}" IsEnabled="{Binding AnyModified}"/>
+                    <Separator/>
+                        <MenuItem Header="Close" Command="{Binding CloseCommand}"/>
+                </MenuItem>
+
+                <MenuItem Header="Help">
+                    <MenuItem Header="Open online guide..." Command="{Binding OpenGuideCommand}"/>
+                    <MenuItem Header="Join DE Modding Hub Discord server..." Command="{Binding JoinHubCommand}"/>
+                    <MenuItem Header="Join 2016+ Modding Discord server..." Command="{Binding Join2016Command}"/>
+                </MenuItem>
+            </Menu>
+
+            <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="5">
+                <!-- Add button -->
+                <Button Name="AddButton" IsEnabled="False" Command="{Binding AddStringCommand}" Background="#545454" Height="33" Width="33" FontSize="16" FontWeight="SemiBold" DockPanel.Dock="Right" VerticalAlignment="Center" HorizontalContentAlignment="Center" Margin="5" ToolTip.Tip="Add a new string to the grid.">+</Button>
+
+                <!-- Search bar -->
+                <DockPanel DockPanel.Dock="Left" LastChildFill="True" ToolTip.Tip="Search for matching string identifier/text.">
+                    <TextBlock DockPanel.Dock="Left" FontWeight="Medium" FontSize="14" VerticalAlignment="Center" Margin="5">Search:</TextBlock>
+                    <TextBox Name="SearchBox" DockPanel.Dock="Left" IsEnabled="False" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="5" Watermark="Input search string"></TextBox>
+                </DockPanel>
+            </DockPanel>
+
+            <!-- String grid -->
+            <Grid DockPanel.Dock="Top" Margin="5">
+                <!-- Add 'Add new string' option in context menu -->
+                <Grid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Add new string" Command="{Binding AddStringCommand}"/>
+                    </ContextMenu>
+                </Grid.ContextMenu>
+
+                <DataGrid Name="StringGrid" Items="{Binding BlangStringsView}" AutoGenerateColumns="False" CanUserResizeColumns="True" CanUserSortColumns="True" VerticalScrollBarVisibility="Auto">
+                    <!-- Override Enter key -->
+                    <DataGrid.KeyBindings>
+                        <KeyBinding Gesture="Enter" Command="{Binding EnterKeyCommand}" />
+                    </DataGrid.KeyBindings>
+
+                    <DataGrid.Columns>
+                        <!-- Checkbox column -->
+                        <DataGridTemplateColumn CellStyleClasses="Modified" Header=" " IsReadOnly="True" MinWidth="45" Width="45" CanUserResize="False" SortMemberPath="Modified">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0" BorderBrush="Gray" BorderThickness="0 0 1 1">
+                                       <CheckBox Focusable="False" HorizontalAlignment="Center" IsHitTestVisible="False" IsChecked="{Binding Modified}"/>
+                                    </Border> 
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Identifier column -->
+                        <DataGridTemplateColumn Header="Identifier" IsReadOnly="True" MinWidth="45" Width="0.40*" SortMemberPath="Identifier">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0" BorderBrush="Gray" BorderThickness="0 0 1 1">
+                                        <TextBox KeyUp="StringIdentifierBox_KeyUp" Name="{Binding OriginalIdentifier, Mode=OneTime}" Classes="Datagrid" CornerRadius="0" BorderThickness="0" TextWrapping="Wrap" Text="{Binding Identifier}"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Text column -->
+                        <DataGridTemplateColumn Header="Text" MinWidth="45" Width="0.60*" SortMemberPath="Text">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0" BorderBrush="Gray" BorderThickness="0 0 0 1">
+                                        <TextBox KeyUp="StringTextBox_KeyUp" Name="{Binding OriginalIdentifier, Mode=OneTime, StringFormat={}{0}#Text }" Classes="Datagrid" CornerRadius="0" BorderThickness="0" TextWrapping="Wrap" Text="{Binding Text}"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </DockPanel>
+    </Panel>
+</Window>
