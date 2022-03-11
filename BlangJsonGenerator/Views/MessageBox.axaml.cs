@@ -150,14 +150,6 @@ namespace BlangJsonGenerator.Views
                 titleBar.PointerPressed += BeginListenForDrag;
                 titleBar.PointerMoved += HandlePotentialDrag;
                 titleBar.PointerReleased += HandlePotentialDrop;
-
-                // Detect Windows 11 by checking build number
-                if (Environment.OSVersion.Version.Build >= 22000)
-                {
-                    // Remove acrylic blur on Windows 11
-                    // See https://github.com/AvaloniaUI/Avalonia/issues/6465 for more info
-                    this.TransparencyLevelHint = WindowTransparencyLevel.None;
-                }
             }
             else
             {

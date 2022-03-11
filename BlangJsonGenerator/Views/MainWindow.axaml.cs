@@ -234,17 +234,6 @@ namespace BlangJsonGenerator.Views
                 this.FindControl<DockPanel>("MainPanel").Children.Remove(this.FindControl<TextBlock>("AppTitle"));
                 this.TransparencyLevelHint = WindowTransparencyLevel.None;
             }
-
-            // Remove acrylic blur on Windows 11
-            // See https://github.com/AvaloniaUI/Avalonia/issues/6465 for more info
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                // Detect Windows 11 by checking build number
-                if (Environment.OSVersion.Version.Build >= 22000)
-                {
-                    this.TransparencyLevelHint = WindowTransparencyLevel.None;
-                }
-            }
         }
     }
 }
