@@ -25,7 +25,7 @@ cd BlangJsonGeneratorUI
 dotnet publish -p:PublishProfile=FolderProfile -r <rid>
 ```
 
-(Replace `<rid>` with `win-x64` for Windows, `linux-x64` for Linux and `osx-x64` for macOS.)
+(Replace `<rid>` with `win10-x64` for Windows, `linux-x64` for Linux and `osx-x64` for macOS.)
 
 The compiled binaries will be found in `BlangJsonGeneratorUI/BlangJsonGenerator/bin/Release/net6.0/publish/`.
 

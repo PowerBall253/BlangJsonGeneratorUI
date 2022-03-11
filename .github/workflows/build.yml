@@ -20,7 +20,7 @@ jobs:
             filename: BlangJsonGenerator-osx.zip
 
           - os: windows-latest
-            rid: win-x64
+            rid: win10-x64
             filename: BlangJsonGenerator-win64.zip
 
     runs-on: ${{ matrix.os }}
