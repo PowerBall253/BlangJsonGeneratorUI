@@ -146,6 +146,7 @@ namespace BlangJsonGenerator.ViewModels
             else
             {
                 filePath = "New file";
+                _blangLanguage = "new";
 
                 // Init new blang file
                 BlangFile = new BlangFile()
