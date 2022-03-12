@@ -65,7 +65,7 @@ namespace BlangJsonGenerator.ViewModels
         private string _blangLanguage = "";
 
         // If true, the program is not running on macOS
-        public bool IsNotMacOs
+        public static bool IsNotMacOs
         {
             get => !RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
         }
@@ -80,7 +80,7 @@ namespace BlangJsonGenerator.ViewModels
         private bool _isSearchBoxInit;
 
         // Open file dialog and return selected file
-        private async Task<string> OpenFileDialog(string title, string extension)
+        private static async Task<string> OpenFileDialog(string title, string extension)
         {
             // Open file dialog
             var fileDialog = new OpenFileDialog()
@@ -97,7 +97,7 @@ namespace BlangJsonGenerator.ViewModels
             };
 
             // Get selected file
-            string[]? results = await fileDialog.ShowAsync((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow);
+            string[]? results = await fileDialog.ShowAsync((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!);
 
             if (results == null || results.Length == 0)
             {
@@ -123,7 +123,7 @@ namespace BlangJsonGenerator.ViewModels
                 {
                     var blangFileBytes = File.ReadAllBytes(filePath);
                     _blangLanguage = Path.GetFileNameWithoutExtension(filePath);
-                    var decryptedBlangFile = BlangDecrypt.IdCrypt(blangFileBytes, $"strings/{_blangLanguage}.blang", true);
+                    var decryptedBlangFile = BlangDecrypt.IdCrypt(blangFileBytes, $"strings/{_blangLanguage}.blang", true)!;
                     BlangFile = BlangFile.ParseFromMemory(decryptedBlangFile);
                 }
                 catch
@@ -168,12 +168,12 @@ namespace BlangJsonGenerator.ViewModels
             BlangStringsView = new DataGridCollectionView(BlangFile.Strings);
 
             // Deselect selected row
-            var stringGrid = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.FindControl<DataGrid>("StringGrid");
+            var stringGrid = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!.FindControl<DataGrid>("StringGrid")!;
             stringGrid.SelectedItem = null;
 
             // Initialize filtering system for search bar
             _stringFilter = "";
-            var searchBox = (Application.Current.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.FindControl<TextBox>("SearchBox");
+            var searchBox = (Application.Current.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!.FindControl<TextBox>("SearchBox")!;
             searchBox.IsEnabled = true;
             searchBox.Text = "";
             BlangStringsView.Filter = bs => ((BlangString)bs).Identifier.Contains(_stringFilter) || ((BlangString)bs).Text.Contains(_stringFilter);
@@ -184,14 +184,14 @@ namespace BlangJsonGenerator.ViewModels
                 _isSearchBoxInit = true;
                 searchBox.GetObservable(TextBox.TextProperty).Subscribe(text =>
                 {
-                    _stringFilter = text;
+                    _stringFilter = text!;
                     BlangStringsView.Refresh();
                     stringGrid.SelectedItem = null;
                 });
             }
 
             // Init search button
-            var addButton = (Application.Current.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.FindControl<Button>("AddButton");
+            var addButton = (Application.Current.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!.FindControl<Button>("AddButton")!;
             addButton.IsEnabled = true;
 
             // Add filename to app title
@@ -279,7 +279,7 @@ namespace BlangJsonGenerator.ViewModels
 
             // Refresh view
             BlangStringsView!.Refresh();
-            var stringGrid = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.FindControl<DataGrid>("StringGrid");
+            var stringGrid = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!.FindControl<DataGrid>("StringGrid")!;
             stringGrid.SelectedItem = null;
 
             return true;
@@ -337,7 +337,7 @@ namespace BlangJsonGenerator.ViewModels
                 if (UnsavedChanges && AnyModified)
                 {
                     // Confirmation message box
-                    var confirm = await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", Views.MessageBox.MessageButtons.YesCancel);
+                    var confirm = await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", Views.MessageBox.MessageButtons.YesCancel);
 
                     if (confirm == Views.MessageBox.MessageResult.Cancel)
                     {
@@ -356,7 +356,7 @@ namespace BlangJsonGenerator.ViewModels
                 // Open blang file
                 if (!OpenBlangFile(filePath))
                 {
-                    await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", Views.MessageBox.MessageButtons.Ok);
+                    await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", Views.MessageBox.MessageButtons.Ok);
                     return;
                 }
             });
@@ -367,7 +367,7 @@ namespace BlangJsonGenerator.ViewModels
                 if (UnsavedChanges && AnyModified)
                 {
                     // Confirmation message box
-                    var confirm = await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", Views.MessageBox.MessageButtons.YesCancel);
+                    var confirm = await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", Views.MessageBox.MessageButtons.YesCancel);
 
                     if (confirm == Views.MessageBox.MessageResult.Cancel)
                     {
@@ -390,7 +390,7 @@ namespace BlangJsonGenerator.ViewModels
                 if (UnsavedChanges && AnyModified)
                 {
                     // Confirmation message box
-                    var confirm = await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow, "Warning", "Are you sure you want to load a JSON?\nSome unsaved changes may be lost.", Views.MessageBox.MessageButtons.YesCancel);
+                    var confirm = await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Warning", "Are you sure you want to load a JSON?\nSome unsaved changes may be lost.", Views.MessageBox.MessageButtons.YesCancel);
 
                     if (confirm == Views.MessageBox.MessageResult.Cancel)
                     {
@@ -417,7 +417,7 @@ namespace BlangJsonGenerator.ViewModels
                 // Load JSON
                 if (!LoadJson(filePath))
                 {
-                    await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow, "Error", "Failed to load the JSON file.\nMake sure the file is valid, then try again.", Views.MessageBox.MessageButtons.Ok);
+                    await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Error", "Failed to load the JSON file.\nMake sure the file is valid, then try again.", Views.MessageBox.MessageButtons.Ok);
                     return;
                 }
 
@@ -428,7 +428,7 @@ namespace BlangJsonGenerator.ViewModels
 
                 // Refresh view
                 BlangStringsView!.Refresh();
-                var stringGrid = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.FindControl<DataGrid>("StringGrid");
+                var stringGrid = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!.FindControl<DataGrid>("StringGrid")!;
                 stringGrid.SelectedItem = null;
             });
 
@@ -448,7 +448,7 @@ namespace BlangJsonGenerator.ViewModels
                 };
 
                 // Get save path
-                string? filePath = await fileDialog.ShowAsync((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow);
+                string? filePath = await fileDialog.ShowAsync((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!);
 
                 if (String.IsNullOrEmpty(filePath))
                 {
@@ -458,7 +458,7 @@ namespace BlangJsonGenerator.ViewModels
                 // Save to JSON
                 if (!SaveToJson(filePath))
                 {
-                    await Views.MessageBox.Show((Application.Current.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow, "Error", "Failed to save the mod JSON.\nTry saving into another folder.", Views.MessageBox.MessageButtons.Ok);
+                    await Views.MessageBox.Show((Application.Current.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Error", "Failed to save the mod JSON.\nTry saving into another folder.", Views.MessageBox.MessageButtons.Ok);
                     return;
                 }
 
@@ -467,13 +467,13 @@ namespace BlangJsonGenerator.ViewModels
             });
 
             // Close app
-            CloseCommand = ReactiveCommand.CreateFromTask(async () =>
+            CloseCommand = ReactiveCommand.Create(() =>
             {
-                (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.Close();
+                (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!.Close();
             });
 
             // Open string modding guide in browser
-            OpenGuideCommand = ReactiveCommand.CreateFromTask(async () =>
+            OpenGuideCommand = ReactiveCommand.Create(() =>
             {
                 Process.Start(new ProcessStartInfo()
                 {
@@ -483,7 +483,7 @@ namespace BlangJsonGenerator.ViewModels
             });
 
             // Open eternal modding hub discord invite in browser
-            JoinHubCommand = ReactiveCommand.CreateFromTask(async () =>
+            JoinHubCommand = ReactiveCommand.Create(() =>
             {
                 Process.Start(new ProcessStartInfo()
                 {
@@ -493,7 +493,7 @@ namespace BlangJsonGenerator.ViewModels
             });
 
             // Open 2016+ modding discord invite in browser
-            Join2016Command = ReactiveCommand.CreateFromTask(async () =>
+            Join2016Command = ReactiveCommand.Create(() =>
             {
                 Process.Start(new ProcessStartInfo()
                 {
@@ -503,10 +503,10 @@ namespace BlangJsonGenerator.ViewModels
             });
 
             // Overrides enter key on data grid
-            EnterKeyCommand = ReactiveCommand.CreateFromTask(async () => { });
+            EnterKeyCommand = ReactiveCommand.Create(() => { });
 
             // Add new string to grid
-            AddStringCommand = ReactiveCommand.CreateFromTask(async () =>
+            AddStringCommand = ReactiveCommand.Create(() =>
             {
                 if (!IsBlangLoaded)
                 {
@@ -522,7 +522,7 @@ namespace BlangJsonGenerator.ViewModels
                 BlangStringsView!.Refresh();
 
                 // Scroll into added string
-                var stringGrid = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow.FindControl<DataGrid>("StringGrid");
+                var stringGrid = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!.FindControl<DataGrid>("StringGrid")!;
                 stringGrid.ScrollIntoView(newBlangString, null);
                 stringGrid.SelectedItem = newBlangString;
             });

@@ -44,7 +44,7 @@ namespace BlangParser
         /// <summary>
         /// The string's text
         /// </summary>
-        private string _text { get; set; }
+        private string _text = "";
 
         /// <summary>
         /// Text property that notifies when value is changed

@@ -103,12 +103,12 @@ namespace BlangJsonGenerator.Views
         {
             // Set title and text
             var msgbox = new MessageBox();
-            msgbox.FindControl<TextBlock>("MessageTitle").Text = title;
-            msgbox.FindControl<TextBlock>("Text").Text = text;
+            msgbox.FindControl<TextBlock>("MessageTitle")!.Text = title;
+            msgbox.FindControl<TextBlock>("Text")!.Text = text;
 
             // Set buttons and default result
-            var okButton = msgbox.FindControl<Button>("OkButton");
-            var cancelButton = msgbox.FindControl<Button>("CancelButton");
+            var okButton = msgbox.FindControl<Button>("OkButton")!;
+            var cancelButton = msgbox.FindControl<Button>("CancelButton")!;
 
             switch (buttons)
             {
@@ -142,10 +142,10 @@ namespace BlangJsonGenerator.Views
                 this.ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.NoChrome;
 
                 // Make custom close button visible
-                this.FindControl<Button>("CloseButton").IsVisible = true;
+                this.FindControl<Button>("CloseButton")!.IsVisible = true;
 
                 // Set drag-and-drop for custom title bar
-                var titleBar = this.FindControl<Panel>("MessageTitleBar");
+                var titleBar = this.FindControl<Panel>("MessageTitleBar")!;
                 titleBar.IsHitTestVisible = true;
                 titleBar.PointerPressed += BeginListenForDrag;
                 titleBar.PointerMoved += HandlePotentialDrag;
@@ -154,13 +154,13 @@ namespace BlangJsonGenerator.Views
             else
             {
                 // Remove custom close button for Windows
-                this.FindControl<Panel>("MessageTitleBar").Children.Remove(this.FindControl<Button>("CloseButton"));
+                this.FindControl<Panel>("MessageTitleBar")!.Children.Remove(this.FindControl<Button>("CloseButton")!);
 
                 // Linux specific changes
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
                     // Hide custom title
-                    this.FindControl<TextBlock>("MessageTitle").IsVisible = false;
+                    this.FindControl<TextBlock>("MessageTitle")!.IsVisible = false;
 
                     // Disable acrylic blur
                     this.TransparencyLevelHint = WindowTransparencyLevel.None;

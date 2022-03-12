@@ -21,7 +21,7 @@ namespace BlangParser
         /// <param name="internalPath">blang file's internal path</param>
         /// <param name="decrypt">bool indicating if we wanna encrypt or decrypt</param>
         /// <returns>Memory stream of the encrypted or decrypted blang file</returns>
-        public static MemoryStream IdCrypt(byte[] fileData, string internalPath, bool decrypt)
+        public static MemoryStream? IdCrypt(byte[] fileData, string internalPath, bool decrypt)
         {
             string keyDeriveStatic = "swapTeam\n";
             byte[] fileSalt = new byte[0xC];
@@ -33,10 +33,7 @@ namespace BlangParser
             }
             else
             {
-                using (RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider())
-                {
-                    rng.GetBytes(fileSalt);
-                }
+                fileSalt = RandomNumberGenerator.GetBytes(0xC);
             }
 
             byte[] keyDeriveStaticBytes = new byte[0xA];
@@ -64,15 +61,12 @@ namespace BlangParser
             }
             else
             {
-                using (RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider())
-                {
-                    rng.GetBytes(fileIV);
-                }
+                fileIV = RandomNumberGenerator.GetBytes(0x10);
             }
 
             // Get plain text for AES
             byte[] fileText;
-            byte[] hmac = new byte[0x20];
+            byte[] hmac;
 
             if (decrypt)
             {
@@ -154,30 +148,30 @@ namespace BlangParser
         /// <param name="pbBuf3">third byte array to hash</param>
         /// <param name="pbSecret">key for hmac generation, can be null</param>
         /// <returns>hash or hmac in bytes</returns>
-        private static byte[] HashData(byte[] pbBuf1, byte[] pbBuf2, byte[] pbBuf3, byte[] pbSecret)
+        private static byte[] HashData(byte[] pbBuf1, byte[] pbBuf2, byte[] pbBuf3, byte[]? pbSecret)
         {
             if (pbSecret == null)
             {
-                using (SHA256 sha256 = SHA256.Create())
+                using (var sha256 = SHA256.Create())
                 {
                     sha256.TransformBlock(pbBuf1, 0, pbBuf1.Length, null, 0);
                     sha256.TransformBlock(pbBuf2, 0, pbBuf2.Length, null, 0);
                     sha256.TransformBlock(pbBuf3, 0, pbBuf3.Length, null, 0);
-                    sha256.TransformFinalBlock(new byte[0], 0, 0);
+                    sha256.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 
-                    return sha256.Hash;
+                    return sha256.Hash!;
                 }
             }
             else
             {
-                using (HMACSHA256 hmac = new HMACSHA256(pbSecret))
+                using (var hmac = new HMACSHA256(pbSecret))
                 {
                     hmac.TransformBlock(pbBuf1, 0, pbBuf1.Length, null, 0);
                     hmac.TransformBlock(pbBuf2, 0, pbBuf2.Length, null, 0);
                     hmac.TransformBlock(pbBuf3, 0, pbBuf3.Length, null, 0);
-                    hmac.TransformFinalBlock(new byte[0], 0, 0);
+                    hmac.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 
-                    return hmac.Hash;
+                    return hmac.Hash!;
                 }
             }
         }
@@ -192,7 +186,7 @@ namespace BlangParser
         /// <returns>encrypted/decrypted data bytes</returns>
         private static byte[] CryptData(bool decrypt, byte[] pbInput, byte[] pbEncKey, byte[] pbIV)
         {
-            using (Aes aesAlg = Aes.Create())
+            using (var aesAlg = Aes.Create())
             {
                 aesAlg.Key = pbEncKey;
                 aesAlg.IV = pbIV;
@@ -201,9 +195,9 @@ namespace BlangParser
                 {
                     ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
 
-                    using (MemoryStream msDecrypt = new MemoryStream())
+                    using (var msDecrypt = new MemoryStream())
                     {
-                        using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Write))
+                        using (var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Write))
                         {
                             csDecrypt.Write(pbInput, 0, pbInput.Length);
                             csDecrypt.FlushFinalBlock();
@@ -215,9 +209,9 @@ namespace BlangParser
                 {
                     ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
 
-                    using (MemoryStream msEncrypt = new MemoryStream())
+                    using (var msEncrypt = new MemoryStream())
                     {
-                        using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                        using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
                         {
                             csEncrypt.Write(pbInput, 0, pbInput.Length);
                             csEncrypt.FlushFinalBlock();

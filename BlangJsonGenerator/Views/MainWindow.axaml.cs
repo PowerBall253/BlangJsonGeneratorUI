@@ -33,7 +33,7 @@ namespace BlangJsonGenerator.Views
             {
                 if (stringBox.Name!.Equals(blangString.OriginalIdentifier))
                 {
-                    blangString.Modified = !stringBox.Text.Equals(blangString.OriginalIdentifier);
+                    blangString.Modified = !stringBox.Text!.Equals(blangString.OriginalIdentifier);
                     ((MainWindowViewModel)DataContext).UnsavedChanges = true;
                 }
 
@@ -54,7 +54,7 @@ namespace BlangJsonGenerator.Views
             // Add newline with enter key
             if (e.Key == Key.Enter)
             {
-                stringBox.Text = stringBox.Text.Insert(stringBox.CaretIndex, "\n");
+                stringBox.Text = stringBox.Text!.Insert(stringBox.CaretIndex, "\n");
                 stringBox.CaretIndex += 1;
             }
 
@@ -63,9 +63,9 @@ namespace BlangJsonGenerator.Views
             // Look for string and set modified property
             foreach (var blangString in ((MainWindowViewModel)DataContext!).BlangFile!.Strings)
             {
-                if (stringBox.Name!.Substring(0, stringBox.Name.Length - 5).Equals(blangString.OriginalIdentifier))
+                if (stringBox.Name![0..^5].Equals(blangString.OriginalIdentifier))
                 {
-                    blangString.Modified = !stringBox.Text.Equals(blangString.OriginalText);
+                    blangString.Modified = !stringBox.Text!.Equals(blangString.OriginalText);
                     ((MainWindowViewModel)DataContext).UnsavedChanges = true;
                 }
 
@@ -225,13 +225,13 @@ namespace BlangJsonGenerator.Views
             // Remove regular menu on macOS
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                this.FindControl<DockPanel>("MainPanel").Children.Remove(this.FindControl<Menu>("WindowsMenu"));
+                this.FindControl<DockPanel>("MainPanel")!.Children.Remove(this.FindControl<Menu>("WindowsMenu")!);
             }
 
             // Remove title bar and disable acrylic blur on Linux
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                this.FindControl<DockPanel>("MainPanel").Children.Remove(this.FindControl<TextBlock>("AppTitle"));
+                this.FindControl<DockPanel>("MainPanel")!.Children.Remove(this.FindControl<TextBlock>("AppTitle")!);
                 this.TransparencyLevelHint = WindowTransparencyLevel.None;
             }
         }

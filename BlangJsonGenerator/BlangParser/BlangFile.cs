@@ -24,6 +24,14 @@ namespace BlangParser
         public List<BlangString> Strings;
 
         /// <summary>
+        /// BlangFile default constructor
+        /// </summary>
+        public BlangFile()
+        {
+            Strings = new List<BlangString>();
+        }
+
+        /// <summary>
         /// Parses the given Blang file into a BlangFile object
         /// </summary>
         /// <param name="path">path to the Blang file</param>
