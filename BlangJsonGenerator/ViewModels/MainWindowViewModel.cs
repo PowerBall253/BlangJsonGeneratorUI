@@ -64,7 +64,7 @@ namespace BlangJsonGenerator.ViewModels
         // Name of the language we're editing
         private string _blangLanguage = "";
 
-        // If true, the program is running on Windows
+        // If true, the program is not running on macOS
         public bool IsNotMacOs
         {
             get => !RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
