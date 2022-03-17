@@ -119,7 +119,7 @@
 
                 <!-- Search bar -->
                 <DockPanel DockPanel.Dock="Left" LastChildFill="True" ToolTip.Tip="Search for matching string identifier/text.">
-                    <TextBlock DockPanel.Dock="Left" FontWeight="Medium" FontSize="14" VerticalAlignment="Center" Margin="5">Search:</TextBlock>
+                    <TextBlock DockPanel.Dock="Left" FontWeight="Medium" FontSize="14" VerticalAlignment="Center" Margin="5" Text="Search:"/>
                     <TextBox Name="SearchBox" DockPanel.Dock="Left" IsEnabled="False" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="5" Watermark="Input search string"></TextBox>
                 </DockPanel>
             </DockPanel>
