@@ -109,7 +109,7 @@ namespace BlangJsonGenerator.ViewModels
         }
 
         // Load blang files from .resources file
-        public Dictionary<string, byte[]>? OpenResourcesFile(string filePath)
+        public Dictionary<string, byte[]>? LoadResourcesFile(string filePath)
         {
             // Get all blang files in .resources file
             var blangFiles = new Dictionary<string, byte[]>();
@@ -512,7 +512,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Load .resources file
-                var blangFiles = OpenResourcesFile(filePath);
+                var blangFiles = LoadResourcesFile(filePath);
 
                 if (blangFiles == null)
                 {
