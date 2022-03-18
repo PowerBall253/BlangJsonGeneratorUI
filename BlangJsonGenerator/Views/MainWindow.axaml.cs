@@ -161,6 +161,21 @@ namespace BlangJsonGenerator.Views
                     await MessageBox.Show(this, "Error", "No blang files were found in the .resources file.\nMake sure you chose the right file, then try again.", MessageBox.MessageButtons.Ok);
                     return;
                 }
+
+                // Let user select the blang to load
+                string? selectedBlang = await BlangSelection.Show(this, blangFiles.Keys.ToArray());
+
+                if (selectedBlang == null)
+                {
+                    return;
+                }
+
+                // Load the chosen blang
+                if (!(DataContext as MainWindowViewModel)!.LoadBlangFile(blangFiles[selectedBlang], Path.GetFileNameWithoutExtension(selectedBlang)))
+                {
+                    await MessageBox.Show(this, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", Views.MessageBox.MessageButtons.Ok);
+                    return;
+                }
             }
             else if (filePath.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && (DataContext as MainWindowViewModel)!.IsBlangLoaded)
             {
