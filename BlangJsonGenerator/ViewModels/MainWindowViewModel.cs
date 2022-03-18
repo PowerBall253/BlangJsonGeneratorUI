@@ -13,6 +13,7 @@ using Avalonia;
 using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using BlangJsonGenerator.Classes;
 using ReactiveUI;
 using BlangParser;
 

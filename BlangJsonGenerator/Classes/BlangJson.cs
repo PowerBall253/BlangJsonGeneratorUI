@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace BlangJsonGenerator
+namespace BlangJsonGenerator.Classes
 {
     public class BlangJson
     {
