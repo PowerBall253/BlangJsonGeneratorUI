@@ -90,7 +90,7 @@ namespace BlangJsonGenerator.Views
                 }
 
                 // Load blang files from .resources file
-                var blangFiles = ((MainWindowViewModel) DataContext).LoadResourcesFile(filePath);
+                var blangFiles = ((MainWindowViewModel)DataContext).LoadResourcesFile(filePath);
 
                 if (blangFiles == null)
                 {
