@@ -147,10 +147,18 @@ namespace BlangJsonGenerator.Views
                     }
                 }
 
-                // Load .resources file
-                if (!((MainWindowViewModel)DataContext).OpenResourcesFile(filePath))
+                // Load blang files from .resources file
+                var blangFiles = ((MainWindowViewModel) DataContext).OpenResourcesFile(filePath);
+
+                if (blangFiles == null)
                 {
                     await MessageBox.Show(this, "Error", "Failed to load the .resources file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
+                    return;
+                }
+
+                if (blangFiles.Count == 0)
+                {
+                    await MessageBox.Show(this, "Error", "No blang files were found in the .resources file.\nMake sure you chose the right file, then try again.", MessageBox.MessageButtons.Ok);
                     return;
                 }
             }

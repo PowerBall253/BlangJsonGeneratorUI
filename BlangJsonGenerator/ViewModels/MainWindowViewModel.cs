@@ -108,126 +108,118 @@ namespace BlangJsonGenerator.ViewModels
             return results.FirstOrDefault(str => !string.IsNullOrEmpty(str))!;
         }
 
-        // Load blang file from .resources file
-        public bool OpenResourcesFile(string filePath)
+        // Load blang files from .resources file
+        public Dictionary<string, byte[]>? OpenResourcesFile(string filePath)
         {
             // Get all blang files in .resources file
             var blangFiles = new Dictionary<string, byte[]>();
 
-            using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            try
             {
-                using (var binaryReader = new BinaryReader(fileStream))
+                // Open file
+                using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                using var binaryReader = new BinaryReader(fileStream);
+
+                // Check magic
+                if (!binaryReader.ReadBytes(4).SequenceEqual(new byte[] {0x49, 0x44, 0x43, 0x4C}))
                 {
-                    // Check magic
-                    if (!binaryReader.ReadBytes(4).SequenceEqual(new byte[] {0x49, 0x44, 0x43, 0x4C}))
+                    return null;
+                }
+
+                // Read resource data
+                fileStream.Seek(28, SeekOrigin.Current);
+                uint fileCount = binaryReader.ReadUInt32();
+
+                fileStream.Seek(4, SeekOrigin.Current);
+                uint dummyCount = binaryReader.ReadUInt32();
+
+                // Get offsets
+                fileStream.Seek(20, SeekOrigin.Current);
+                ulong namesOffset = binaryReader.ReadUInt64();
+
+                fileStream.Seek(8, SeekOrigin.Current);
+                ulong infoOffset = binaryReader.ReadUInt64();
+
+                fileStream.Seek(8, SeekOrigin.Current);
+                ulong dummyOffset = binaryReader.ReadUInt64() + dummyCount * 4;
+
+                fileStream.Seek((long)namesOffset, SeekOrigin.Begin);
+
+                // Get filenames for exporting
+                ulong nameCount = binaryReader.ReadUInt64();
+                var names = new List<string>((int)nameCount);
+                var nameChars = new List<byte>(512);
+
+                var currentPosition = fileStream.Position;
+
+                for (ulong i = 0; i < nameCount; i++)
+                {
+                    fileStream.Seek(currentPosition + (long)i * 8, SeekOrigin.Begin);
+                    ulong currentNameOffset = binaryReader.ReadUInt64();
+                    fileStream.Seek((long)(namesOffset + nameCount * 8 + currentNameOffset + 8),
+                        SeekOrigin.Begin);
+
+                    while (binaryReader.PeekChar() != 0)
                     {
-                        return false;
+                        nameChars.Add(binaryReader.ReadByte());
                     }
 
-                    // Read resource data
-                    fileStream.Seek(28, SeekOrigin.Current);
-                    uint fileCount = binaryReader.ReadUInt32();
+                    string name = Encoding.UTF8.GetString(nameChars.ToArray());
+                    names.Add(name);
 
-                    fileStream.Seek(4, SeekOrigin.Current);
-                    uint dummyCount = binaryReader.ReadUInt32();
+                    nameChars.Clear();
+                }
 
-                    // Get offsets
-                    fileStream.Seek(20, SeekOrigin.Current);
-                    ulong namesOffset = binaryReader.ReadUInt64();
+                fileStream.Seek((long)infoOffset, SeekOrigin.Begin);
 
-                    fileStream.Seek(8, SeekOrigin.Current);
-                    ulong infoOffset = binaryReader.ReadUInt64();
+                // Extract .blang files
+                for (uint i = 0; i < fileCount; i++)
+                {
+                    // Read file info for extracting
+                    fileStream.Seek(32, SeekOrigin.Current);
+                    ulong nameIdOffset = binaryReader.ReadUInt64();
 
-                    fileStream.Seek(8, SeekOrigin.Current);
-                    ulong dummyOffset = binaryReader.ReadUInt64() + dummyCount * 4;
+                    fileStream.Seek(16, SeekOrigin.Current);
+                    ulong offset = binaryReader.ReadUInt64();
+                    ulong zSize = binaryReader.ReadUInt64();
+                    ulong size = binaryReader.ReadUInt64();
 
-                    fileStream.Seek((long)namesOffset, SeekOrigin.Begin);
+                    nameIdOffset = (nameIdOffset + 1) * 8 + dummyOffset;
+                    currentPosition = fileStream.Position + 64;
 
-                    // Get filenames for exporting
-                    ulong nameCount = binaryReader.ReadUInt64();
-                    var names = new List<string>((int)nameCount);
-                    var nameChars = new List<byte>(512);
-
-                    var currentPosition = fileStream.Position;
-
-                    for (ulong i = 0; i < nameCount; i++)
+                    // If the file is oodle compressed, continue
+                    if (size != zSize)
                     {
-                        fileStream.Seek(currentPosition + (long)i * 8, SeekOrigin.Begin);
-                        ulong currentNameOffset = binaryReader.ReadUInt64();
-                        fileStream.Seek((long)(namesOffset + nameCount * 8 + currentNameOffset + 8), SeekOrigin.Begin);
-
-                        while (binaryReader.PeekChar() != 0)
-                        {
-                            nameChars.Add(binaryReader.ReadByte());
-                        }
-
-                        string name = Path.GetFileName(Encoding.UTF8.GetString(nameChars.ToArray()));
-
-                        // Strip everything after '$'
-                        int dollarSignIndex = name.IndexOf("$", StringComparison.CurrentCulture);
-
-                        if (dollarSignIndex >= 0)
-                        {
-                            name = name.Substring(0, dollarSignIndex);
-                        }
-
-                        names.Add(name);
-                    }
-
-                    fileStream.Seek((long)infoOffset, SeekOrigin.Begin);
-
-                    // Extract .blang files
-                    for (uint i = 0; i < fileCount; i++)
-                    {
-                        // Read file info for extracting
-                        fileStream.Seek(32, SeekOrigin.Current);
-                        ulong nameIdOffset = binaryReader.ReadUInt64();
-
-                        fileStream.Seek(16, SeekOrigin.Current);
-                        ulong offset = binaryReader.ReadUInt64();
-                        ulong zSize = binaryReader.ReadUInt64();
-                        ulong size = binaryReader.ReadUInt64();
-
-                        nameIdOffset = (nameIdOffset + 1) * 8 + dummyOffset;
-                        currentPosition = fileStream.Position + 64;
-
-                        // If the file is oodle compressed, continue
-                        if (size != zSize)
-                        {
-                            fileStream.Seek(currentPosition, SeekOrigin.Begin);
-                            continue;
-                        }
-
-                        fileStream.Seek((long)nameIdOffset, SeekOrigin.Begin);
-                        ulong nameId = binaryReader.ReadUInt64();
-                        string name = names[(int)nameId];
-
-                        // Filter out non-blang files
-                        if (!Path.GetFileName(name).EndsWith(".blang"))
-                        {
-                            fileStream.Seek(currentPosition, SeekOrigin.Begin);
-                            continue;
-                        }
-
-                        // Read blang bytes
-                        fileStream.Seek((long)offset, SeekOrigin.Begin);
-                        var blangBytes = binaryReader.ReadBytes((int)size);
-                        blangFiles.Add(name[..^6], blangBytes);
-
-                        // Seek back to read next file
                         fileStream.Seek(currentPosition, SeekOrigin.Begin);
+                        continue;
                     }
+
+                    fileStream.Seek((long)nameIdOffset, SeekOrigin.Begin);
+                    ulong nameId = binaryReader.ReadUInt64();
+                    string name = names[(int)nameId];
+
+                    // Filter out non-blang files
+                    if (!name.EndsWith(".blang"))
+                    {
+                        fileStream.Seek(currentPosition, SeekOrigin.Begin);
+                        continue;
+                    }
+
+                    // Read blang bytes
+                    fileStream.Seek((long)offset, SeekOrigin.Begin);
+                    var blangBytes = binaryReader.ReadBytes((int)size);
+                    blangFiles.Add(name[8..^6], blangBytes);
+
+                    // Seek back to read next file
+                    fileStream.Seek(currentPosition, SeekOrigin.Begin);
                 }
             }
-
-            if (blangFiles.Count == 0)
+            catch
             {
-                return false;
+                return null;
             }
 
-            // Make the user choose between one
-
-            return true;
+            return blangFiles;
         }
 
         // Open and read the given blang file from memory
@@ -520,9 +512,17 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Load .resources file
-                if (!OpenResourcesFile(filePath))
+                var blangFiles = OpenResourcesFile(filePath);
+
+                if (blangFiles == null)
                 {
                     await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Error", "Failed to load the .resources file.\nMake sure the file is valid, then try again.", Views.MessageBox.MessageButtons.Ok);
+                    return;
+                }
+
+                if (blangFiles.Count == 0)
+                {
+                    await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Error", "No blang files were found in the .resources file.\nMake sure you chose the right file, then try again.", Views.MessageBox.MessageButtons.Ok);
                     return;
                 }
             });
