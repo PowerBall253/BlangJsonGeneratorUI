@@ -29,12 +29,12 @@ namespace BlangJsonGenerator.Views
             bool anyModified = false;
 
             // Look for string and set modified property
-            foreach (var blangString in ((MainWindowViewModel)DataContext!).BlangFile!.Strings)
+            foreach (var blangString in (DataContext as MainWindowViewModel)!.BlangFile!.Strings)
             {
                 if (stringBox.Name!.Equals(blangString.OriginalIdentifier))
                 {
                     blangString.Modified = !stringBox.Text!.Equals(blangString.OriginalIdentifier);
-                    ((MainWindowViewModel)DataContext).UnsavedChanges = true;
+                    (DataContext as MainWindowViewModel)!.UnsavedChanges = true;
                 }
 
                 if (blangString.Modified)
@@ -43,7 +43,7 @@ namespace BlangJsonGenerator.Views
                 }
             }
 
-            ((MainWindowViewModel)DataContext).AnyModified = anyModified;
+            (DataContext as MainWindowViewModel)!.AnyModified = anyModified;
         }
 
         // Checks if blang string text has been modified on textbox input
@@ -61,12 +61,12 @@ namespace BlangJsonGenerator.Views
             bool anyModified = false;
 
             // Look for string and set modified property
-            foreach (var blangString in ((MainWindowViewModel)DataContext!).BlangFile!.Strings)
+            foreach (var blangString in (DataContext as MainWindowViewModel)!.BlangFile!.Strings)
             {
                 if (stringBox.Name![0..^5].Equals(blangString.OriginalIdentifier))
                 {
                     blangString.Modified = !stringBox.Text!.Equals(blangString.OriginalText);
-                    ((MainWindowViewModel)DataContext).UnsavedChanges = true;
+                    (DataContext as MainWindowViewModel)!.UnsavedChanges = true;
                 }
 
                 if (blangString.Modified)
@@ -75,7 +75,7 @@ namespace BlangJsonGenerator.Views
                 }
             }
 
-            ((MainWindowViewModel)DataContext).AnyModified = anyModified;
+            (DataContext as MainWindowViewModel)!.AnyModified = anyModified;
         }
 
         // Handler for drag-and-drop
@@ -103,7 +103,7 @@ namespace BlangJsonGenerator.Views
             // Check file type and load it
             if (filePath.EndsWith(".blang", StringComparison.OrdinalIgnoreCase))
             {
-                if (((MainWindowViewModel)DataContext!).UnsavedChanges && ((MainWindowViewModel)DataContext).AnyModified)
+                if ((DataContext as MainWindowViewModel)!.UnsavedChanges && (DataContext as MainWindowViewModel)!.AnyModified)
                 {
                     // Confirmation message box
                     var confirm = await MessageBox.Show(this, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", MessageBox.MessageButtons.YesCancel);
@@ -128,7 +128,7 @@ namespace BlangJsonGenerator.Views
                 }
 
                 // Load blang file
-                if (!((MainWindowViewModel)DataContext).LoadBlangFile(blangFileBytes, Path.GetFileNameWithoutExtension(filePath)))
+                if (!(DataContext as MainWindowViewModel)!.LoadBlangFile(blangFileBytes, Path.GetFileNameWithoutExtension(filePath)))
                 {
                     await MessageBox.Show(this, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
                     return;
@@ -136,7 +136,7 @@ namespace BlangJsonGenerator.Views
             }
             else if (filePath.EndsWith(".resources", StringComparison.OrdinalIgnoreCase) || filePath.EndsWith(".resources.backup", StringComparison.OrdinalIgnoreCase))
             {
-                if (((MainWindowViewModel)DataContext!).UnsavedChanges && ((MainWindowViewModel)DataContext).AnyModified)
+                if ((DataContext as MainWindowViewModel)!.UnsavedChanges && (DataContext as MainWindowViewModel)!.AnyModified)
                 {
                     // Confirmation message box
                     var confirm = await MessageBox.Show(this, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", MessageBox.MessageButtons.YesCancel);
@@ -162,9 +162,9 @@ namespace BlangJsonGenerator.Views
                     return;
                 }
             }
-            else if (filePath.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && ((MainWindowViewModel)DataContext!).IsBlangLoaded)
+            else if (filePath.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && (DataContext as MainWindowViewModel)!.IsBlangLoaded)
             {
-                if (((MainWindowViewModel)DataContext).UnsavedChanges && ((MainWindowViewModel)DataContext).AnyModified)
+                if ((DataContext as MainWindowViewModel)!.UnsavedChanges && (DataContext as MainWindowViewModel)!.AnyModified)
                 {
                     // Confirmation message box
                     var confirm = await MessageBox.Show(this, "Warning", "Are you sure you want to load a JSON?\nSome unsaved changes may be lost.", MessageBox.MessageButtons.YesCancel);
@@ -176,7 +176,7 @@ namespace BlangJsonGenerator.Views
                 }
 
                 // Load json
-                if (!((MainWindowViewModel)DataContext).LoadJson(filePath))
+                if (!(DataContext as MainWindowViewModel)!.LoadJson(filePath))
                 {
                     await MessageBox.Show(this, "Error", "Failed to load the JSON file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
                     return;
@@ -211,7 +211,7 @@ namespace BlangJsonGenerator.Views
                 return;
             }
 
-            if (Path.GetExtension(filePath).Equals(".json", StringComparison.OrdinalIgnoreCase) && !((MainWindowViewModel)DataContext!).IsBlangLoaded)
+            if (Path.GetExtension(filePath).Equals(".json", StringComparison.OrdinalIgnoreCase) && !(DataContext as MainWindowViewModel)!.IsBlangLoaded)
             {
                 e.DragEffects = DragDropEffects.None;
             }
@@ -229,7 +229,7 @@ namespace BlangJsonGenerator.Views
             }
 
             // Check if there are unsaved changes
-            if (((MainWindowViewModel)DataContext!).UnsavedChanges && ((MainWindowViewModel)DataContext).AnyModified)
+            if ((DataContext as MainWindowViewModel)!.UnsavedChanges && (DataContext as MainWindowViewModel)!.AnyModified)
             {
                 // Prevent window from closing
                 e.Cancel = true;

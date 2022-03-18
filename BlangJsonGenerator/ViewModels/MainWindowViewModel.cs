@@ -208,7 +208,7 @@ namespace BlangJsonGenerator.ViewModels
                     // Read blang bytes
                     fileStream.Seek((long)offset, SeekOrigin.Begin);
                     var blangBytes = binaryReader.ReadBytes((int)size);
-                    blangFiles.Add(name[8..^6], blangBytes);
+                    blangFiles.Add(name[8..^0], blangBytes);
 
                     // Seek back to read next file
                     fileStream.Seek(currentPosition, SeekOrigin.Begin);
@@ -525,6 +525,8 @@ namespace BlangJsonGenerator.ViewModels
                     await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Error", "No blang files were found in the .resources file.\nMake sure you chose the right file, then try again.", Views.MessageBox.MessageButtons.Ok);
                     return;
                 }
+
+                string? selectedBlang = await Views.BlangSelection.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, blangFiles.Keys.ToArray());
             });
 
             // Create a new blang with one empty entry
