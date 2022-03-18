@@ -82,7 +82,7 @@ namespace BlangJsonGenerator.ViewModels
         private bool _isSearchBoxInit;
 
         // Open file dialog and return selected file
-        private static async Task<string> OpenFileDialog(string title, string extension)
+        private static async Task<string> OpenFileDialog(string title, List<string> extensions, string extensionsDescription)
         {
             // Open file dialog
             var fileDialog = new OpenFileDialog
@@ -93,7 +93,8 @@ namespace BlangJsonGenerator.ViewModels
                 {
                     new()
                     {
-                        Extensions = new List<string> { extension }
+                        Name = extensionsDescription,
+                        Extensions = extensions
                     }
                 }
             };
@@ -462,7 +463,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Get filepath
-                string filePath = await OpenFileDialog("Select the .blang file to load", "blang");
+                string filePath = await OpenFileDialog("Select the .blang file to load", new List<string> { "blang" }, "Blang files (.blang)");
 
                 if (String.IsNullOrEmpty(filePath))
                 {
@@ -505,7 +506,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Get filepath
-                string filePath = await OpenFileDialog("Select the .resources file to load", "resources");
+                string filePath = await OpenFileDialog("Select the .resources file to load", new List<string> { "resources", "backup" }, "Resource files (.resources, .resources.backup)");
 
                 if (String.IsNullOrEmpty(filePath))
                 {
@@ -581,7 +582,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Get filepath
-                string filePath = await OpenFileDialog("Select the JSON file to load", "json");
+                string filePath = await OpenFileDialog("Select the JSON file to load", new List<string> { "json" }, "JSON files (.json)");
 
                 if (String.IsNullOrEmpty(filePath))
                 {
