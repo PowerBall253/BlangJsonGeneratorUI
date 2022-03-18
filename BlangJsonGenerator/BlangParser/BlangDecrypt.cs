@@ -117,7 +117,7 @@ namespace BlangParser
 
             if (decrypt)
             {
-                cryptMemoryStream = new MemoryStream(cryptedText, false);
+                cryptMemoryStream = new MemoryStream(cryptedText);
             }
             else
             {
