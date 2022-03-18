@@ -247,12 +247,14 @@ namespace BlangJsonGenerator.Views
                 !filePath.ToLower().EndsWith(".resources.backup", StringComparison.OrdinalIgnoreCase) &&
                 !filePath.ToLower().EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             {
+                e.DragEffects = DragDropEffects.None;
                 return;
             }
 
             if (Path.GetExtension(filePath).Equals(".json", StringComparison.OrdinalIgnoreCase) && !(DataContext as MainWindowViewModel)!.IsBlangLoaded)
             {
                 e.DragEffects = DragDropEffects.None;
+                return;
             }
         }
 

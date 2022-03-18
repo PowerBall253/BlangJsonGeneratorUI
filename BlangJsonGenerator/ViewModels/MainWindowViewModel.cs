@@ -463,7 +463,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Get filepath
-                string filePath = await OpenFileDialog("Select the .blang file to load", new List<string> { "blang" }, "Blang files (.blang)");
+                string filePath = await OpenFileDialog("Select the .blang file to load", new List<string> { "blang" }, "Blang files");
 
                 if (String.IsNullOrEmpty(filePath))
                 {
@@ -506,7 +506,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Get filepath
-                string filePath = await OpenFileDialog("Select the .resources file to load", new List<string> { "resources", "backup" }, "Resource files (.resources, .resources.backup)");
+                string filePath = await OpenFileDialog("Select the .resources file to load", new List<string> { "resources", "backup" }, "Resource files");
 
                 if (String.IsNullOrEmpty(filePath))
                 {
@@ -582,7 +582,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Get filepath
-                string filePath = await OpenFileDialog("Select the JSON file to load", new List<string> { "json" }, "JSON files (.json)");
+                string filePath = await OpenFileDialog("Select the JSON file to load", new List<string> { "json" }, "JSON files");
 
                 if (String.IsNullOrEmpty(filePath))
                 {
