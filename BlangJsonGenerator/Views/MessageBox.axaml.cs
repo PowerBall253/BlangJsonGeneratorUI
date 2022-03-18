@@ -55,13 +55,13 @@ namespace BlangJsonGenerator.Views
                     break;
             }
 
-            this.Close();
+            Close();
         }
 
         // Close window on close button click
         private void CloseButton_OnClick(object? sender, RoutedEventArgs e)
         {
-            this.Close();
+            Close();
         }
 
         // Custom window drag implementation for Windows
@@ -76,7 +76,7 @@ namespace BlangJsonGenerator.Views
         {
             var pos = e.GetPosition(this.FindControl<Panel>("MessageTitleBar"));
             _startPosition = new PixelPoint((int)(_startPosition.X + pos.X - _mouseOffsetToOrigin.X), (int)(_startPosition.Y + pos.Y - _mouseOffsetToOrigin.Y));
-            this.Position = _startPosition;
+            Position = _startPosition;
             _isPointerPressed = false;
         }
 
@@ -86,13 +86,13 @@ namespace BlangJsonGenerator.Views
             {
                 var pos = e.GetPosition(this.FindControl<Panel>("MessageTitleBar"));
                 _startPosition = new PixelPoint((int)(_startPosition.X + pos.X - _mouseOffsetToOrigin.X), (int)(_startPosition.Y + pos.Y - _mouseOffsetToOrigin.Y));
-                this.Position = _startPosition;
+                Position = _startPosition;
             }
         }
 
         private void BeginListenForDrag(object? sender, PointerPressedEventArgs e)
         {
-            _startPosition = this.Position;
+            _startPosition = Position;
             _mouseOffsetToOrigin = e.GetPosition(this.FindControl<Panel>("MessageTitleBar"));
             _isPointerPressed = true;
         }
@@ -136,7 +136,7 @@ namespace BlangJsonGenerator.Views
             {
                 // Windows requires a custom titlebar due to system chrome issues
                 // Remove default titlebar buttons
-                this.ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.NoChrome;
+                ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.NoChrome;
 
                 // Make custom close button visible
                 this.FindControl<Button>("CloseButton")!.IsVisible = true;
@@ -160,7 +160,7 @@ namespace BlangJsonGenerator.Views
                     this.FindControl<TextBlock>("MessageTitle")!.IsVisible = false;
 
                     // Disable acrylic blur
-                    this.TransparencyLevelHint = WindowTransparencyLevel.None;
+                    TransparencyLevelHint = WindowTransparencyLevel.None;
                 }
             }
         }
