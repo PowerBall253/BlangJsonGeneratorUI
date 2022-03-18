@@ -59,7 +59,7 @@ namespace BlangParser
                     }
 
                     // Reset stream position
-                    if (fileStream.Position == 0xC)
+                    if (fileStream.Position == 0x11)
                     {
                         fileStream.Seek(0x0, SeekOrigin.Begin);
                     }
