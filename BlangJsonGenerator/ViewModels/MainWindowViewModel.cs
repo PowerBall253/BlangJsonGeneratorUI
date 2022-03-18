@@ -63,7 +63,7 @@ namespace BlangJsonGenerator.ViewModels
         public bool UnsavedChanges = false;
 
         // Name of the language we're editing
-        public string BlangLanguage = "";
+        private string _blangLanguage = "";
 
         // If true, the program is not running on macOS
         public static bool IsNotMacOs
@@ -231,7 +231,7 @@ namespace BlangJsonGenerator.ViewModels
         }
 
         // Open and read the given blang file from memory
-        public bool LoadBlangFile(byte[]? blangBytes, string language)
+        public bool LoadBlangFile(byte[]? blangBytes, string language = "new")
         {
             // Reset values
             BlangStringsView = null;
@@ -263,14 +263,9 @@ namespace BlangJsonGenerator.ViewModels
                 {
                     return false;
                 }
-
-                // Set language
-                BlangLanguage = language;
             }
             else
             {
-                BlangLanguage = "new";
-
                 // Init new blang file
                 BlangFile = new BlangFile()
                 {
@@ -283,6 +278,9 @@ namespace BlangJsonGenerator.ViewModels
 
                 _newStringIndex += 1;
             }
+
+            // Set language
+            _blangLanguage = language;
 
             // Set blang loaded to true
             IsBlangLoaded = true;
@@ -318,7 +316,7 @@ namespace BlangJsonGenerator.ViewModels
             addButton.IsEnabled = true;
 
             // Add filename to app title
-            string fileName = blangBytes == null ? "New file" : BlangLanguage + ".blang";
+            string fileName = blangBytes == null ? "New file" : _blangLanguage + ".blang";
             AppTitle = $"BlangJsonGenerator - {fileName}";
 
             return true;
@@ -543,7 +541,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Create blang file
-                LoadBlangFile(null, "");
+                LoadBlangFile(null);
             });
 
             // Load JSON file with changes
@@ -611,7 +609,7 @@ namespace BlangJsonGenerator.ViewModels
                 var fileDialog = new SaveFileDialog()
                 {
                     Title = "Save JSON mod as...",
-                    InitialFileName = $"{BlangLanguage}.json"
+                    InitialFileName = $"{_blangLanguage}.json"
                 };
 
                 // Get save path
