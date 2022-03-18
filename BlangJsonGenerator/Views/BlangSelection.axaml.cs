@@ -88,7 +88,7 @@ namespace BlangJsonGenerator.Views
             _result = null;
 
             // Create window
-            var blangSelection = new BlangSelection()
+            var blangSelection = new BlangSelection
             {
                 DataContext = new BlangSelectionViewModel()
             };

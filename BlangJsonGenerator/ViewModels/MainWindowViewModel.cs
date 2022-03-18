@@ -85,15 +85,15 @@ namespace BlangJsonGenerator.ViewModels
         private static async Task<string> OpenFileDialog(string title, string extension)
         {
             // Open file dialog
-            var fileDialog = new OpenFileDialog()
+            var fileDialog = new OpenFileDialog
             {
                 Title = title,
                 AllowMultiple = false,
-                Filters = new List<FileDialogFilter>()
+                Filters = new List<FileDialogFilter>
                 {
-                    new FileDialogFilter()
+                    new()
                     {
-                        Extensions = new List<string>() { extension }
+                        Extensions = new List<string> { extension }
                     }
                 }
             };
@@ -261,12 +261,12 @@ namespace BlangJsonGenerator.ViewModels
             else
             {
                 // Init new blang file
-                BlangFile = new BlangFile()
+                BlangFile = new BlangFile
                 {
                     UnknownData = 0,
-                    Strings = new List<BlangString>()
+                    Strings = new List<BlangString>
                     {
-                        new BlangString(0, $"#new_string_{_newStringIndex}", $"#new_string_{_newStringIndex}", "", "", "", false)
+                        new(0, $"#new_string_{_newStringIndex}", $"#new_string_{_newStringIndex}", "", "", "", false)
                     }
                 };
 
@@ -325,7 +325,7 @@ namespace BlangJsonGenerator.ViewModels
             try
             {
                 var blangJsonString = File.ReadAllText(filePath);
-                blangJson = JsonSerializer.Deserialize<BlangJson>(blangJsonString, new JsonSerializerOptions()
+                blangJson = JsonSerializer.Deserialize<BlangJson>(blangJsonString, new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                     Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
@@ -405,7 +405,7 @@ namespace BlangJsonGenerator.ViewModels
         private bool SaveToJson(string filePath)
         {
             // Create object to serialize
-            var blangJsonObject = new BlangJson()
+            var blangJsonObject = new BlangJson
             {
                 Strings = new List<BlangJsonString>()
             };
@@ -415,7 +415,7 @@ namespace BlangJsonGenerator.ViewModels
             {
                 if (blangString.Modified)
                 {
-                    blangJsonObject.Strings.Add(new BlangJsonString()
+                    blangJsonObject.Strings.Add(new BlangJsonString
                     {
                         Name = blangString.Identifier,
                         Text = blangString.Text.Replace("\r\n", "\n")
@@ -424,7 +424,7 @@ namespace BlangJsonGenerator.ViewModels
             }
 
             // Serialize
-            byte[] modJson = JsonSerializer.SerializeToUtf8Bytes(blangJsonObject, new JsonSerializerOptions()
+            byte[] modJson = JsonSerializer.SerializeToUtf8Bytes(blangJsonObject, new JsonSerializerOptions
             {
                 WriteIndented = true,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -623,7 +623,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Open file dialog
-                var fileDialog = new SaveFileDialog()
+                var fileDialog = new SaveFileDialog
                 {
                     Title = "Save JSON mod as...",
                     InitialFileName = $"{_blangLanguage}.json"
@@ -657,7 +657,7 @@ namespace BlangJsonGenerator.ViewModels
             // Open string modding guide in browser
             OpenGuideCommand = ReactiveCommand.Create(() =>
             {
-                Process.Start(new ProcessStartInfo()
+                Process.Start(new ProcessStartInfo
                 {
                     FileName = "https://wiki.eternalmods.com/books/2-how-to-create-mods/chapter/string-modding",
                     UseShellExecute = true
@@ -667,7 +667,7 @@ namespace BlangJsonGenerator.ViewModels
             // Open eternal modding hub discord invite in browser
             JoinHubCommand = ReactiveCommand.Create(() =>
             {
-                Process.Start(new ProcessStartInfo()
+                Process.Start(new ProcessStartInfo
                 {
                     FileName = "https://discord.com/invite/FCdjqYDr5B",
                     UseShellExecute = true
@@ -677,7 +677,7 @@ namespace BlangJsonGenerator.ViewModels
             // Open 2016+ modding discord invite in browser
             Join2016Command = ReactiveCommand.Create(() =>
             {
-                Process.Start(new ProcessStartInfo()
+                Process.Start(new ProcessStartInfo
                 {
                     FileName = "https://discord.com/invite/ymRvQaU",
                     UseShellExecute = true
