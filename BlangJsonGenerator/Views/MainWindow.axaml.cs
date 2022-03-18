@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -17,9 +18,127 @@ namespace BlangJsonGenerator.Views
         public MainWindow()
         {
             InitializeComponent();
+
+            // If file was provided in program arguments, load it
+            Opened += async (_, _) =>
+            {
+                // Get args
+                var envArgs = Environment.GetCommandLineArgs();
+
+                if (envArgs.Length < 2)
+                {
+                    return;
+                }
+
+                // Load file
+                await LoadFile(envArgs[1], false);
+            };
+
 #if DEBUG
             this.AttachDevTools();
 #endif
+        }
+
+        // Load the given file
+        private async Task LoadFile(string filePath, bool allowJson)
+        { 
+            // Check file type and load it
+            if (filePath.EndsWith(".blang", StringComparison.OrdinalIgnoreCase))
+            {
+                if ((DataContext as MainWindowViewModel)!.UnsavedChanges && (DataContext as MainWindowViewModel)!.AnyModified)
+                {
+                    // Confirmation message box
+                    var confirm = await MessageBox.Show(this, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", MessageBox.MessageButtons.YesCancel);
+
+                    if (confirm == MessageBox.MessageResult.Cancel)
+                    {
+                        return;
+                    }
+                }
+
+                // Read bytes from blang file
+                byte[] blangFileBytes;
+
+                try
+                {
+                    blangFileBytes = await File.ReadAllBytesAsync(filePath);
+                }
+                catch
+                {
+                    await MessageBox.Show(this, "Error", "Failed to read from the blang file.\nMake sure the file exists and isn't being used by another process.", MessageBox.MessageButtons.Ok);
+                    return;
+                }
+
+                // Load blang file
+                if (!(DataContext as MainWindowViewModel)!.LoadBlangFile(blangFileBytes, Path.GetFileNameWithoutExtension(filePath)))
+                {
+                    await MessageBox.Show(this, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
+                    return;
+                }
+            }
+            else if (filePath.EndsWith(".resources", StringComparison.OrdinalIgnoreCase) || filePath.EndsWith(".resources.backup", StringComparison.OrdinalIgnoreCase))
+            {
+                if ((DataContext as MainWindowViewModel)!.UnsavedChanges && (DataContext as MainWindowViewModel)!.AnyModified)
+                {
+                    // Confirmation message box
+                    var confirm = await MessageBox.Show(this, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", MessageBox.MessageButtons.YesCancel);
+
+                    if (confirm == MessageBox.MessageResult.Cancel)
+                    {
+                        return;
+                    }
+                }
+
+                // Load blang files from .resources file
+                var blangFiles = ((MainWindowViewModel) DataContext).LoadResourcesFile(filePath);
+
+                if (blangFiles == null)
+                {
+                    await MessageBox.Show(this, "Error", "Failed to load the .resources file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
+                    return;
+                }
+
+                if (blangFiles.Count == 0)
+                {
+                    await MessageBox.Show(this, "Error", "No blang files were found in the .resources file.\nMake sure you chose the right file, then try again.", MessageBox.MessageButtons.Ok);
+                    return;
+                }
+
+                // Let user select the blang to load
+                string? selectedBlang = await BlangSelection.Show(this, blangFiles.Keys.ToArray());
+
+                if (selectedBlang == null)
+                {
+                    return;
+                }
+
+                // Load the chosen blang
+                if (!(DataContext as MainWindowViewModel)!.LoadBlangFile(blangFiles[selectedBlang], Path.GetFileNameWithoutExtension(selectedBlang)))
+                {
+                    await MessageBox.Show(this, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
+                    return;
+                }
+            }
+            else if (allowJson && filePath.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && (DataContext as MainWindowViewModel)!.IsBlangLoaded)
+            {
+                if ((DataContext as MainWindowViewModel)!.UnsavedChanges && (DataContext as MainWindowViewModel)!.AnyModified)
+                {
+                    // Confirmation message box
+                    var confirm = await MessageBox.Show(this, "Warning", "Are you sure you want to load a JSON?\nSome unsaved changes may be lost.", MessageBox.MessageButtons.YesCancel);
+
+                    if (confirm == MessageBox.MessageResult.Cancel)
+                    {
+                        return;
+                    }
+                }
+
+                // Load json
+                if (!(DataContext as MainWindowViewModel)!.LoadJson(filePath))
+                {
+                    await MessageBox.Show(this, "Error", "Failed to load the JSON file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
+                    return;
+                }
+            }
         }
 
         // Checks if blang string identifier has been modified on textbox input
@@ -100,106 +219,11 @@ namespace BlangJsonGenerator.Views
                 return;
             }
 
-            // Check file type and load it
-            if (filePath.EndsWith(".blang", StringComparison.OrdinalIgnoreCase))
-            {
-                if ((DataContext as MainWindowViewModel)!.UnsavedChanges && (DataContext as MainWindowViewModel)!.AnyModified)
-                {
-                    // Confirmation message box
-                    var confirm = await MessageBox.Show(this, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", MessageBox.MessageButtons.YesCancel);
-
-                    if (confirm == MessageBox.MessageResult.Cancel)
-                    {
-                        return;
-                    }
-                }
-
-                // Read bytes from blang file
-                byte[] blangFileBytes;
-
-                try
-                {
-                    blangFileBytes = await File.ReadAllBytesAsync(filePath);
-                }
-                catch
-                {
-                    await MessageBox.Show(this, "Error", "Failed to read from the blang file.\nMake sure the file exists and isn't being used by another process.", MessageBox.MessageButtons.Ok);
-                    return;
-                }
-
-                // Load blang file
-                if (!(DataContext as MainWindowViewModel)!.LoadBlangFile(blangFileBytes, Path.GetFileNameWithoutExtension(filePath)))
-                {
-                    await MessageBox.Show(this, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
-                    return;
-                }
-            }
-            else if (filePath.EndsWith(".resources", StringComparison.OrdinalIgnoreCase) || filePath.EndsWith(".resources.backup", StringComparison.OrdinalIgnoreCase))
-            {
-                if ((DataContext as MainWindowViewModel)!.UnsavedChanges && (DataContext as MainWindowViewModel)!.AnyModified)
-                {
-                    // Confirmation message box
-                    var confirm = await MessageBox.Show(this, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", MessageBox.MessageButtons.YesCancel);
-
-                    if (confirm == MessageBox.MessageResult.Cancel)
-                    {
-                        return;
-                    }
-                }
-
-                // Load blang files from .resources file
-                var blangFiles = ((MainWindowViewModel) DataContext).LoadResourcesFile(filePath);
-
-                if (blangFiles == null)
-                {
-                    await MessageBox.Show(this, "Error", "Failed to load the .resources file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
-                    return;
-                }
-
-                if (blangFiles.Count == 0)
-                {
-                    await MessageBox.Show(this, "Error", "No blang files were found in the .resources file.\nMake sure you chose the right file, then try again.", MessageBox.MessageButtons.Ok);
-                    return;
-                }
-
-                // Let user select the blang to load
-                string? selectedBlang = await BlangSelection.Show(this, blangFiles.Keys.ToArray());
-
-                if (selectedBlang == null)
-                {
-                    return;
-                }
-
-                // Load the chosen blang
-                if (!(DataContext as MainWindowViewModel)!.LoadBlangFile(blangFiles[selectedBlang], Path.GetFileNameWithoutExtension(selectedBlang)))
-                {
-                    await MessageBox.Show(this, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", Views.MessageBox.MessageButtons.Ok);
-                    return;
-                }
-            }
-            else if (filePath.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && (DataContext as MainWindowViewModel)!.IsBlangLoaded)
-            {
-                if ((DataContext as MainWindowViewModel)!.UnsavedChanges && (DataContext as MainWindowViewModel)!.AnyModified)
-                {
-                    // Confirmation message box
-                    var confirm = await MessageBox.Show(this, "Warning", "Are you sure you want to load a JSON?\nSome unsaved changes may be lost.", MessageBox.MessageButtons.YesCancel);
-
-                    if (confirm == MessageBox.MessageResult.Cancel)
-                    {
-                        return;
-                    }
-                }
-
-                // Load json
-                if (!(DataContext as MainWindowViewModel)!.LoadJson(filePath))
-                {
-                    await MessageBox.Show(this, "Error", "Failed to load the JSON file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
-                    return;
-                }
-            }
+            // Load file
+            await LoadFile(filePath, true);
         }
 
-        // Do not allow drag and drop of non-blang files
+        // Do not allow drag and drop of invalid files
         private void FilterDrop(object? sender, DragEventArgs e)
         {
             // Get filepath
@@ -256,7 +280,7 @@ namespace BlangJsonGenerator.Views
                 if (res == MessageBox.MessageResult.Yes)
                 {
                     _cancelClose = false;
-                    this.Close();
+                    Close();
                 }
             }
         }
@@ -267,14 +291,14 @@ namespace BlangJsonGenerator.Views
             AvaloniaXamlLoader.Load(this);
 
             // Add drag and drop handlers
-            this.AddHandler(DragDrop.DropEvent, Drop);
-            this.AddHandler(DragDrop.DragOverEvent, FilterDrop);
+            AddHandler(DragDrop.DropEvent, Drop);
+            AddHandler(DragDrop.DragOverEvent, FilterDrop);
 
             // Set key bindings, using CMD for macOS and CTRL for Windows
             var ctrlKey = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "CMD" : "CTRL";
-            this.KeyBindings[0].Gesture = KeyGesture.Parse($"{ctrlKey} + O"); // Open
-            this.KeyBindings[1].Gesture = KeyGesture.Parse($"{ctrlKey} + N"); // New
-            this.KeyBindings[2].Gesture = KeyGesture.Parse($"{ctrlKey} + S"); // Save
+            KeyBindings[0].Gesture = KeyGesture.Parse($"{ctrlKey} + O"); // Open
+            KeyBindings[1].Gesture = KeyGesture.Parse($"{ctrlKey} + N"); // New
+            KeyBindings[2].Gesture = KeyGesture.Parse($"{ctrlKey} + S"); // Save
 
             // Remove regular menu on macOS
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
@@ -286,7 +310,7 @@ namespace BlangJsonGenerator.Views
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 this.FindControl<DockPanel>("MainPanel")!.Children.Remove(this.FindControl<TextBlock>("AppTitle")!);
-                this.TransparencyLevelHint = WindowTransparencyLevel.None;
+                TransparencyLevelHint = WindowTransparencyLevel.None;
             }
         }
     }
