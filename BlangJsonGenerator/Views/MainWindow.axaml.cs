@@ -119,8 +119,22 @@ namespace BlangJsonGenerator.Views
                     }
                 }
 
+                // Read bytes from blang file
+                byte[] blangFileBytes;
+
+                try
+                {
+                    blangFileBytes = await File.ReadAllBytesAsync(filePath);
+                    ((MainWindowViewModel)DataContext).BlangLanguage = Path.GetFileNameWithoutExtension(filePath);
+                }
+                catch
+                {
+                    await MessageBox.Show(this, "Error", "Failed to read from the blang file.\nMake sure the file exists and isn't being used by another process.", Views.MessageBox.MessageButtons.Ok);
+                    return;
+                }
+
                 // Load blang file
-                if (!((MainWindowViewModel)DataContext).OpenBlangFile(filePath))
+                if (!((MainWindowViewModel)DataContext).LoadBlangFile(blangFileBytes))
                 {
                     await MessageBox.Show(this, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
                     return;
