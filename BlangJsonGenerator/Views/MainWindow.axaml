@@ -58,6 +58,8 @@
                     <NativeMenuItem Header="New..." Command="{Binding NewBlangCommand}"/>
                     <NativeMenuItem Header="Open blang file..." Command="{Binding OpenBlangCommand}"/>
                     <NativeMenuItemSeparator/>
+                    <NativeMenuItem Header="Open blang from .resources file..." Command="{Binding OpenResourcesCommand}"/>
+                    <NativeMenuItemSeparator/>
                     <NativeMenuItem Header="Load string JSON..." Command="{Binding LoadJsonCommand}" IsEnabled="{Binding IsBlangLoaded}"/>
                     <NativeMenuItemSeparator/>
                     <NativeMenuItem Header="Save..." Command="{Binding SaveCommand}" IsEnabled="{Binding AnyModified}"/>
@@ -98,6 +100,8 @@
                 <MenuItem Header="File">
                     <MenuItem Header="New..." Command="{Binding NewBlangCommand}"/>
                     <MenuItem Header="Open blang file..." Command="{Binding OpenBlangCommand}"/>
+                    <Separator/>
+                    <MenuItem Header="Open blang from .resources file..." Command="{Binding OpenResourcesCommand}"/>
                     <Separator/>
                     <MenuItem Header="Load string JSON..." Command="{Binding LoadJsonCommand}" IsEnabled="{Binding IsBlangLoaded}"/>
                     <Separator/>

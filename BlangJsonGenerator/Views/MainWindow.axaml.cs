@@ -95,18 +95,13 @@ namespace BlangJsonGenerator.Views
                 return;
             }
 
-            if (!Path.GetExtension(filePath).Equals(".blang", StringComparison.OrdinalIgnoreCase) && !Path.GetExtension(filePath).Equals(".json", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
             if (!File.Exists(filePath))
             {
                 return;
             }
 
             // Check file type and load it
-            if (Path.GetExtension(filePath).Equals(".blang", StringComparison.OrdinalIgnoreCase))
+            if (filePath.EndsWith(".blang", StringComparison.OrdinalIgnoreCase))
             {
                 if (((MainWindowViewModel)DataContext!).UnsavedChanges && ((MainWindowViewModel)DataContext).AnyModified)
                 {
@@ -125,22 +120,41 @@ namespace BlangJsonGenerator.Views
                 try
                 {
                     blangFileBytes = await File.ReadAllBytesAsync(filePath);
-                    ((MainWindowViewModel)DataContext).BlangLanguage = Path.GetFileNameWithoutExtension(filePath);
                 }
                 catch
                 {
-                    await MessageBox.Show(this, "Error", "Failed to read from the blang file.\nMake sure the file exists and isn't being used by another process.", Views.MessageBox.MessageButtons.Ok);
+                    await MessageBox.Show(this, "Error", "Failed to read from the blang file.\nMake sure the file exists and isn't being used by another process.", MessageBox.MessageButtons.Ok);
                     return;
                 }
 
                 // Load blang file
-                if (!((MainWindowViewModel)DataContext).LoadBlangFile(blangFileBytes))
+                if (!((MainWindowViewModel)DataContext).LoadBlangFile(blangFileBytes, Path.GetFileNameWithoutExtension(filePath)))
                 {
                     await MessageBox.Show(this, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
                     return;
                 }
             }
-            else if (Path.GetExtension(filePath).Equals(".json", StringComparison.OrdinalIgnoreCase) && ((MainWindowViewModel)DataContext!).IsBlangLoaded)
+            else if (filePath.EndsWith(".resources", StringComparison.OrdinalIgnoreCase) || filePath.EndsWith(".resources.backup", StringComparison.OrdinalIgnoreCase))
+            {
+                if (((MainWindowViewModel)DataContext!).UnsavedChanges && ((MainWindowViewModel)DataContext).AnyModified)
+                {
+                    // Confirmation message box
+                    var confirm = await MessageBox.Show(this, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", MessageBox.MessageButtons.YesCancel);
+
+                    if (confirm == MessageBox.MessageResult.Cancel)
+                    {
+                        return;
+                    }
+                }
+
+                // Load .resources file
+                if (!((MainWindowViewModel)DataContext).OpenResourcesFile(filePath))
+                {
+                    await MessageBox.Show(this, "Error", "Failed to load the .resources file.\nMake sure the file is valid, then try again.", MessageBox.MessageButtons.Ok);
+                    return;
+                }
+            }
+            else if (filePath.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && ((MainWindowViewModel)DataContext!).IsBlangLoaded)
             {
                 if (((MainWindowViewModel)DataContext).UnsavedChanges && ((MainWindowViewModel)DataContext).AnyModified)
                 {
@@ -181,9 +195,12 @@ namespace BlangJsonGenerator.Views
                 return;
             }
 
-            if (!Path.GetExtension(filePath).Equals(".blang", StringComparison.OrdinalIgnoreCase) && !Path.GetExtension(filePath).Equals(".json", StringComparison.OrdinalIgnoreCase))
+            if (!filePath.EndsWith(".blang", StringComparison.OrdinalIgnoreCase) &&
+                !filePath.ToLower().EndsWith(".resources", StringComparison.OrdinalIgnoreCase) &&
+                !filePath.ToLower().EndsWith(".resources.backup", StringComparison.OrdinalIgnoreCase) &&
+                !filePath.ToLower().EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             {
-                e.DragEffects = DragDropEffects.None;
+                return;
             }
 
             if (Path.GetExtension(filePath).Equals(".json", StringComparison.OrdinalIgnoreCase) && !((MainWindowViewModel)DataContext!).IsBlangLoaded)
