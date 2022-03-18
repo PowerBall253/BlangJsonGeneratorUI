@@ -251,10 +251,8 @@ namespace BlangJsonGenerator.ViewModels
                 {
                     try
                     {
-                        using (var memoryStream = new MemoryStream(blangBytes))
-                        {
-                            BlangFile = BlangFile.ParseFromMemory(memoryStream);
-                        }
+                        using var memoryStream = new MemoryStream(blangBytes);
+                        BlangFile = BlangFile.ParseFromMemory(memoryStream);
                     }
                     catch
                     {
