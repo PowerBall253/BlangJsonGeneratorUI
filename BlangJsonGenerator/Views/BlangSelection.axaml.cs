@@ -6,31 +6,17 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.Markup.Xaml;
+using BlangJsonGenerator.ViewModels;
 
 namespace BlangJsonGenerator.Views
 {
-    public partial class MessageBox : Window
+    public partial class BlangSelection : Window
     {
-        // Message box result
-        private static MessageResult _result;
-
-        // Message button combinations enum
-        public enum MessageButtons
-        {
-            Ok,
-            YesCancel
-        }
-
-        // Message box result enum
-        public enum MessageResult
-        {
-            Ok,
-            Yes,
-            Cancel
-        }
+        // Blang selection result
+        private static string? _result = null;
 
         // Constructor
-        public MessageBox()
+        public BlangSelection()
         {
             InitializeComponent();
 #if DEBUG
@@ -45,13 +31,11 @@ namespace BlangJsonGenerator.Views
             switch (((Button)sender!).Content)
             {
                 case "OK":
-                    _result = MessageResult.Ok;
-                    break;
-                case "Yes":
-                    _result = MessageResult.Yes;
+                    int resultIndex = this.FindControl<ComboBox>("BlangOptionsComboBox")!.SelectedIndex;
+                    _result = resultIndex == -1 ? null : (DataContext as BlangSelectionViewModel)!.BlangOptions[resultIndex];
                     break;
                 case "Cancel":
-                    _result = MessageResult.Cancel;
+                    _result = null;
                     break;
             }
 
@@ -74,7 +58,7 @@ namespace BlangJsonGenerator.Views
 
         private void HandlePotentialDrop(object? sender, PointerReleasedEventArgs e)
         {
-            var pos = e.GetPosition(this.FindControl<Panel>("MessageTitleBar"));
+            var pos = e.GetPosition(this.FindControl<Panel>("BlangSelectionTitleBar"));
             _startPosition = new PixelPoint((int)(_startPosition.X + pos.X - _mouseOffsetToOrigin.X), (int)(_startPosition.Y + pos.Y - _mouseOffsetToOrigin.Y));
             Position = _startPosition;
             _isPointerPressed = false;
@@ -84,7 +68,7 @@ namespace BlangJsonGenerator.Views
         {
             if (_isPointerPressed)
             {
-                var pos = e.GetPosition(this.FindControl<Panel>("MessageTitleBar"));
+                var pos = e.GetPosition(this.FindControl<Panel>("BlangSelectionTitleBar"));
                 _startPosition = new PixelPoint((int)(_startPosition.X + pos.X - _mouseOffsetToOrigin.X), (int)(_startPosition.Y + pos.Y - _mouseOffsetToOrigin.Y));
                 Position = _startPosition;
             }
@@ -93,36 +77,27 @@ namespace BlangJsonGenerator.Views
         private void BeginListenForDrag(object? sender, PointerPressedEventArgs e)
         {
             _startPosition = Position;
-            _mouseOffsetToOrigin = e.GetPosition(this.FindControl<Panel>("MessageTitleBar"));
+            _mouseOffsetToOrigin = e.GetPosition(this.FindControl<Panel>("BlangSelectionTitleBar"));
             _isPointerPressed = true;
         }
 
-        // Create and display message box
-        public static async Task<MessageResult> Show(Window parent, string title, string text, MessageButtons buttons)
+        // Create and display blang selection window
+        public static async Task<string?> Show(Window parent, string[] blangOptions)
         {
-            // Set title and text
-            var msgbox = new MessageBox();
-            msgbox.FindControl<TextBlock>("MessageTitle")!.Text = title;
-            msgbox.FindControl<TextBlock>("Text")!.Text = text;
+            // Reset result
+            _result = null;
 
-            // Set buttons and default result
-            var okButton = msgbox.FindControl<Button>("OkButton")!;
-            var cancelButton = msgbox.FindControl<Button>("CancelButton")!;
-
-            switch (buttons)
+            // Create window
+            var blangSelection = new BlangSelection
             {
-                case MessageButtons.Ok:
-                    _result = MessageResult.Ok;
-                    break;
-                case MessageButtons.YesCancel:
-                    okButton.Content = "Yes";
-                    cancelButton.IsVisible = true;
-                    _result = MessageResult.Cancel;
-                    break;
-            }
+                DataContext = new BlangSelectionViewModel()
+            };
+
+            // Set options in the combo box
+            (blangSelection.DataContext as BlangSelectionViewModel)!.BlangOptions = blangOptions;
 
             // Show window
-            await msgbox.ShowDialog(parent);
+            await blangSelection.ShowDialog(parent);
             return _result;
         }
 
@@ -142,7 +117,7 @@ namespace BlangJsonGenerator.Views
                 this.FindControl<Button>("CloseButton")!.IsVisible = true;
 
                 // Set drag-and-drop for custom title bar
-                var titleBar = this.FindControl<Panel>("MessageTitleBar")!;
+                var titleBar = this.FindControl<Panel>("BlangSelectionTitleBar")!;
                 titleBar.IsHitTestVisible = true;
                 titleBar.PointerPressed += BeginListenForDrag;
                 titleBar.PointerMoved += HandlePotentialDrag;
@@ -151,13 +126,13 @@ namespace BlangJsonGenerator.Views
             else
             {
                 // Remove custom close button for Windows
-                this.FindControl<Panel>("MessageTitleBar")!.Children.Remove(this.FindControl<Button>("CloseButton")!);
+                this.FindControl<Panel>("BlangSelectionTitleBar")!.Children.Remove(this.FindControl<Button>("CloseButton")!);
 
                 // Linux specific changes
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
                     // Hide custom title
-                    this.FindControl<TextBlock>("MessageTitle")!.IsVisible = false;
+                    this.FindControl<TextBlock>("BlangSelectionTitle")!.IsVisible = false;
 
                     // Disable acrylic blur
                     TransparencyLevelHint = WindowTransparencyLevel.None;

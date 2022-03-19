@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using Avalonia;
 using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using BlangJsonGenerator.Classes;
 using ReactiveUI;
 using BlangParser;
 
@@ -80,18 +82,19 @@ namespace BlangJsonGenerator.ViewModels
         private bool _isSearchBoxInit;
 
         // Open file dialog and return selected file
-        private static async Task<string> OpenFileDialog(string title, string extension)
+        private static async Task<string> OpenFileDialog(string title, List<string> extensions, string extensionsDescription)
         {
             // Open file dialog
-            var fileDialog = new OpenFileDialog()
+            var fileDialog = new OpenFileDialog
             {
                 Title = title,
                 AllowMultiple = false,
-                Filters = new List<FileDialogFilter>()
+                Filters = new List<FileDialogFilter>
                 {
-                    new FileDialogFilter()
+                    new()
                     {
-                        Extensions = new List<string>() { extension }
+                        Name = extensionsDescription,
+                        Extensions = extensions
                     }
                 }
             };
@@ -107,8 +110,122 @@ namespace BlangJsonGenerator.ViewModels
             return results.FirstOrDefault(str => !string.IsNullOrEmpty(str))!;
         }
 
-        // Open and read the given blang file
-        public bool OpenBlangFile(string? filePath)
+        // Load blang files from .resources file
+        public static Dictionary<string, byte[]>? LoadResourcesFile(string filePath)
+        {
+            // Get all blang files in .resources file
+            var blangFiles = new Dictionary<string, byte[]>();
+
+            try
+            {
+                // Open file
+                using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                using var binaryReader = new BinaryReader(fileStream);
+
+                // Check magic
+                if (!binaryReader.ReadBytes(4).SequenceEqual(new byte[] {0x49, 0x44, 0x43, 0x4C}))
+                {
+                    return null;
+                }
+
+                // Read resource data
+                fileStream.Seek(28, SeekOrigin.Current);
+                uint fileCount = binaryReader.ReadUInt32();
+
+                fileStream.Seek(4, SeekOrigin.Current);
+                uint dummyCount = binaryReader.ReadUInt32();
+
+                // Get offsets
+                fileStream.Seek(20, SeekOrigin.Current);
+                ulong namesOffset = binaryReader.ReadUInt64();
+
+                fileStream.Seek(8, SeekOrigin.Current);
+                ulong infoOffset = binaryReader.ReadUInt64();
+
+                fileStream.Seek(8, SeekOrigin.Current);
+                ulong dummyOffset = binaryReader.ReadUInt64() + dummyCount * 4;
+
+                fileStream.Seek((long)namesOffset, SeekOrigin.Begin);
+
+                // Get filenames for exporting
+                ulong nameCount = binaryReader.ReadUInt64();
+                var names = new List<string>((int)nameCount);
+                var nameChars = new List<byte>(512);
+
+                var currentPosition = fileStream.Position;
+
+                for (ulong i = 0; i < nameCount; i++)
+                {
+                    fileStream.Seek(currentPosition + (long)i * 8, SeekOrigin.Begin);
+                    ulong currentNameOffset = binaryReader.ReadUInt64();
+                    fileStream.Seek((long)(namesOffset + nameCount * 8 + currentNameOffset + 8),
+                        SeekOrigin.Begin);
+
+                    while (binaryReader.PeekChar() != 0)
+                    {
+                        nameChars.Add(binaryReader.ReadByte());
+                    }
+
+                    string name = Encoding.UTF8.GetString(nameChars.ToArray());
+                    names.Add(name);
+
+                    nameChars.Clear();
+                }
+
+                fileStream.Seek((long)infoOffset, SeekOrigin.Begin);
+
+                // Extract .blang files
+                for (uint i = 0; i < fileCount; i++)
+                {
+                    // Read file info for extracting
+                    fileStream.Seek(32, SeekOrigin.Current);
+                    ulong nameIdOffset = binaryReader.ReadUInt64();
+
+                    fileStream.Seek(16, SeekOrigin.Current);
+                    ulong offset = binaryReader.ReadUInt64();
+                    ulong zSize = binaryReader.ReadUInt64();
+                    ulong size = binaryReader.ReadUInt64();
+
+                    nameIdOffset = (nameIdOffset + 1) * 8 + dummyOffset;
+                    currentPosition = fileStream.Position + 64;
+
+                    // If the file is oodle compressed, continue
+                    if (size != zSize)
+                    {
+                        fileStream.Seek(currentPosition, SeekOrigin.Begin);
+                        continue;
+                    }
+
+                    fileStream.Seek((long)nameIdOffset, SeekOrigin.Begin);
+                    ulong nameId = binaryReader.ReadUInt64();
+                    string name = names[(int)nameId];
+
+                    // Filter out non-blang files
+                    if (!name.EndsWith(".blang"))
+                    {
+                        fileStream.Seek(currentPosition, SeekOrigin.Begin);
+                        continue;
+                    }
+
+                    // Read blang bytes
+                    fileStream.Seek((long)offset, SeekOrigin.Begin);
+                    var blangBytes = binaryReader.ReadBytes((int)size);
+                    blangFiles.Add(name[8..^0], blangBytes);
+
+                    // Seek back to read next file
+                    fileStream.Seek(currentPosition, SeekOrigin.Begin);
+                }
+            }
+            catch
+            {
+                return null;
+            }
+
+            return blangFiles;
+        }
+
+        // Open and read the given blang file from memory
+        public bool LoadBlangFile(byte[]? blangBytes, string language = "new")
         {
             // Reset values
             BlangStringsView = null;
@@ -116,21 +233,20 @@ namespace BlangJsonGenerator.ViewModels
             UnsavedChanges = false;
             AnyModified = false;
 
-            if (filePath != null)
+            if (blangBytes != null)
             {
                 // Parse blang file
                 try
                 {
-                    var blangFileBytes = File.ReadAllBytes(filePath);
-                    _blangLanguage = Path.GetFileNameWithoutExtension(filePath);
-                    var decryptedBlangFile = BlangDecrypt.IdCrypt(blangFileBytes, $"strings/{_blangLanguage}.blang", true)!;
+                    var decryptedBlangFile = BlangDecrypt.IdCrypt(blangBytes, $"strings/{language}.blang", true)!;
                     BlangFile = BlangFile.ParseFromMemory(decryptedBlangFile);
                 }
                 catch
                 {
                     try
                     {
-                        BlangFile = BlangFile.Parse(filePath);
+                        using var memoryStream = new MemoryStream(blangBytes);
+                        BlangFile = BlangFile.ParseFromMemory(memoryStream);
                     }
                     catch
                     {
@@ -145,21 +261,21 @@ namespace BlangJsonGenerator.ViewModels
             }
             else
             {
-                filePath = "New file";
-                _blangLanguage = "new";
-
                 // Init new blang file
-                BlangFile = new BlangFile()
+                BlangFile = new BlangFile
                 {
                     UnknownData = 0,
-                    Strings = new List<BlangString>()
+                    Strings = new List<BlangString>
                     {
-                        new BlangString(0, $"#new_string_{_newStringIndex}", $"#new_string_{_newStringIndex}", "", "", "", false)
+                        new(0, $"#new_string_{_newStringIndex}", $"#new_string_{_newStringIndex}", "", "", "", false)
                     }
                 };
 
                 _newStringIndex += 1;
             }
+
+            // Set language
+            _blangLanguage = language;
 
             // Set blang loaded to true
             IsBlangLoaded = true;
@@ -195,7 +311,8 @@ namespace BlangJsonGenerator.ViewModels
             addButton.IsEnabled = true;
 
             // Add filename to app title
-            AppTitle = "BlangJsonGenerator - " + Path.GetFileName(filePath);
+            string fileName = blangBytes == null ? "New file" : _blangLanguage + ".blang";
+            AppTitle = $"BlangJsonGenerator - {fileName}";
 
             return true;
         }
@@ -209,7 +326,7 @@ namespace BlangJsonGenerator.ViewModels
             try
             {
                 var blangJsonString = File.ReadAllText(filePath);
-                blangJson = JsonSerializer.Deserialize<BlangJson>(blangJsonString, new JsonSerializerOptions()
+                blangJson = JsonSerializer.Deserialize<BlangJson>(blangJsonString, new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                     Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
@@ -289,7 +406,7 @@ namespace BlangJsonGenerator.ViewModels
         private bool SaveToJson(string filePath)
         {
             // Create object to serialize
-            var blangJsonObject = new BlangJson()
+            var blangJsonObject = new BlangJson
             {
                 Strings = new List<BlangJsonString>()
             };
@@ -299,7 +416,7 @@ namespace BlangJsonGenerator.ViewModels
             {
                 if (blangString.Modified)
                 {
-                    blangJsonObject.Strings.Add(new BlangJsonString()
+                    blangJsonObject.Strings.Add(new BlangJsonString
                     {
                         Name = blangString.Identifier,
                         Text = blangString.Text.Replace("\r\n", "\n")
@@ -308,7 +425,7 @@ namespace BlangJsonGenerator.ViewModels
             }
 
             // Serialize
-            byte[] modJson = JsonSerializer.SerializeToUtf8Bytes(blangJsonObject, new JsonSerializerOptions()
+            byte[] modJson = JsonSerializer.SerializeToUtf8Bytes(blangJsonObject, new JsonSerializerOptions
             {
                 WriteIndented = true,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -346,15 +463,81 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Get filepath
-                string filePath = await OpenFileDialog("Select the .blang file to load", "blang");
+                string filePath = await OpenFileDialog("Select the .blang file to load", new List<string> { "blang" }, "Blang files");
 
                 if (String.IsNullOrEmpty(filePath))
                 {
                     return;
                 }
 
-                // Open blang file
-                if (!OpenBlangFile(filePath))
+                // Read bytes from blang file
+                byte[] blangFileBytes;
+
+                try
+                {
+                    blangFileBytes = File.ReadAllBytes(filePath);
+                }
+                catch
+                {
+                    await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Error", "Failed to read from the blang file.\nMake sure the file exists and isn't being used by another process.", Views.MessageBox.MessageButtons.Ok);
+                    return;
+                }
+
+                // Load blang file
+                if (!LoadBlangFile(blangFileBytes, Path.GetFileNameWithoutExtension(filePath)))
+                {
+                    await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", Views.MessageBox.MessageButtons.Ok);
+                    return;
+                }
+            });
+
+            // Opens blang file and loads it into grid
+            OpenResourcesCommand = ReactiveCommand.CreateFromTask(async () =>
+            {
+                if (UnsavedChanges && AnyModified)
+                {
+                    // Confirmation message box
+                    var confirm = await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Warning", "Are you sure you want to open another file?\nAll unsaved changes will be lost.", Views.MessageBox.MessageButtons.YesCancel);
+
+                    if (confirm == Views.MessageBox.MessageResult.Cancel)
+                    {
+                        return;
+                    }
+                }
+
+                // Get filepath
+                string filePath = await OpenFileDialog("Select the .resources file to load", new List<string> { "resources", "backup" }, "Resource files");
+
+                if (String.IsNullOrEmpty(filePath))
+                {
+                    return;
+                }
+
+                // Load .resources file
+                var blangFiles = LoadResourcesFile(filePath);
+
+                if (blangFiles == null)
+                {
+                    await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Error", "Failed to load the .resources file.\nMake sure the file is valid, then try again.", Views.MessageBox.MessageButtons.Ok);
+                    return;
+                }
+
+                if (blangFiles.Count == 0)
+                {
+                    await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Error", "No blang files were found in the .resources file.\nMake sure you chose the right file, then try again.", Views.MessageBox.MessageButtons.Ok);
+                    return;
+                }
+
+                // Let user select the blang to load
+                string? selectedBlang = await Views.BlangSelection.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, blangFiles.Keys.ToArray());
+
+                if (selectedBlang == null)
+                {
+                    return;
+                }
+
+                // Load the chosen blang
+                if (!LoadBlangFile(blangFiles[selectedBlang], Path.GetFileNameWithoutExtension(selectedBlang)))
                 {
                     await Views.MessageBox.Show((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!, "Error", "Failed to load the blang file.\nMake sure the file is valid, then try again.", Views.MessageBox.MessageButtons.Ok);
                     return;
@@ -376,7 +559,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Create blang file
-                OpenBlangFile(null);
+                LoadBlangFile(null);
             });
 
             // Load JSON file with changes
@@ -399,7 +582,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Get filepath
-                string filePath = await OpenFileDialog("Select the JSON file to load", "json");
+                string filePath = await OpenFileDialog("Select the JSON file to load", new List<string> { "json" }, "JSON files");
 
                 if (String.IsNullOrEmpty(filePath))
                 {
@@ -441,7 +624,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
 
                 // Open file dialog
-                var fileDialog = new SaveFileDialog()
+                var fileDialog = new SaveFileDialog
                 {
                     Title = "Save JSON mod as...",
                     InitialFileName = $"{_blangLanguage}.json"
@@ -475,7 +658,7 @@ namespace BlangJsonGenerator.ViewModels
             // Open string modding guide in browser
             OpenGuideCommand = ReactiveCommand.Create(() =>
             {
-                Process.Start(new ProcessStartInfo()
+                Process.Start(new ProcessStartInfo
                 {
                     FileName = "https://wiki.eternalmods.com/books/2-how-to-create-mods/chapter/string-modding",
                     UseShellExecute = true
@@ -485,7 +668,7 @@ namespace BlangJsonGenerator.ViewModels
             // Open eternal modding hub discord invite in browser
             JoinHubCommand = ReactiveCommand.Create(() =>
             {
-                Process.Start(new ProcessStartInfo()
+                Process.Start(new ProcessStartInfo
                 {
                     FileName = "https://discord.com/invite/FCdjqYDr5B",
                     UseShellExecute = true
@@ -495,7 +678,7 @@ namespace BlangJsonGenerator.ViewModels
             // Open 2016+ modding discord invite in browser
             Join2016Command = ReactiveCommand.Create(() =>
             {
-                Process.Start(new ProcessStartInfo()
+                Process.Start(new ProcessStartInfo
                 {
                     FileName = "https://discord.com/invite/ymRvQaU",
                     UseShellExecute = true
@@ -530,6 +713,8 @@ namespace BlangJsonGenerator.ViewModels
 
         // Commands for binding in MainWindow
         public ReactiveCommand<Unit, Unit> OpenBlangCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> OpenResourcesCommand { get; }
 
         public ReactiveCommand<Unit, Unit> NewBlangCommand { get; }
 

@@ -17,7 +17,7 @@ namespace BlangJsonGenerator
         private static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
                 .UsePlatformDetect()
-                .With(new Win32PlatformOptions()
+                .With(new Win32PlatformOptions
                 {
                     UseWindowsUIComposition = true
                 })
