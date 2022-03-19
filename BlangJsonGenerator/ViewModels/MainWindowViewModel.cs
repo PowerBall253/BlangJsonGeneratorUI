@@ -111,7 +111,7 @@ namespace BlangJsonGenerator.ViewModels
         }
 
         // Load blang files from .resources file
-        public Dictionary<string, byte[]>? LoadResourcesFile(string filePath)
+        public static Dictionary<string, byte[]>? LoadResourcesFile(string filePath)
         {
             // Get all blang files in .resources file
             var blangFiles = new Dictionary<string, byte[]>();
