@@ -5,6 +5,7 @@ GUI utility for creating string mods for DOOM Eternal.
 
 ## Features
 * Reads both encrypted and unencrypted blang files.
+* Supports loading blang files from .resources files without extracting them first.
 * Supports loading previously made string JSONs to continue editing.
 * Easy to use; has tooltips, links to string modding guides, supports dragging and dropping files, etc.
 * Cross-platform; supports all major OSes.
