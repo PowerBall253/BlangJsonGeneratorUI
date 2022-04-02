@@ -491,7 +491,7 @@ namespace BlangJsonGenerator.ViewModels
                 }
             });
 
-            // Opens blang file and loads it into grid
+            // Loads blang from .resources file and loads it into grid
             OpenResourcesCommand = ReactiveCommand.CreateFromTask(async () =>
             {
                 if (UnsavedChanges && AnyModified)
