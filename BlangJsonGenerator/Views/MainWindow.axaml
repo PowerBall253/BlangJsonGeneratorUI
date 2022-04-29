@@ -107,7 +107,7 @@
                     <Separator/>
                     <MenuItem Header="Save..." Command="{Binding SaveCommand}" IsEnabled="{Binding AnyModified}"/>
                     <Separator/>
-                        <MenuItem Header="Close" Command="{Binding CloseCommand}"/>
+                    <MenuItem Header="Close" Command="{Binding CloseCommand}"/>
                 </MenuItem>
 
                 <MenuItem Header="Help">
