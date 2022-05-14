@@ -20,8 +20,20 @@
         <vm:BlangSelectionViewModel/>
     </Design.DataContext>
 
+    <!-- Window style properties -->
+    <Window.Styles>
+        <Style Selector="Button">
+            <Setter Property="BorderBrush" Value="Gray"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="Gray"/>
+            <Setter Property="Background" Value="#686868"/>
+        </Style>
+    </Window.Styles>
+
     <!-- Main window panel -->
-    <Panel>
+    <Panel Name="TopLevelPanel">
         <!-- Set acrylic look -->
         <ExperimentalAcrylicBorder IsHitTestVisible="False">
             <ExperimentalAcrylicBorder.Material>

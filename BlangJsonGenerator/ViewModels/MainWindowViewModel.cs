@@ -99,8 +99,17 @@ namespace BlangJsonGenerator.ViewModels
                 }
             };
 
+            // Disable main window
+            var parentTopLevelPanel = (Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!.FindControl<Panel>("TopLevelPanel")!;
+            parentTopLevelPanel.IsEnabled = false;
+            parentTopLevelPanel.Opacity = 0.7;
+
             // Get selected file
             string[]? results = await fileDialog.ShowAsync((Application.Current!.ApplicationLifetime as ClassicDesktopStyleApplicationLifetime)!.MainWindow!);
+
+            // Re-enable main window
+            parentTopLevelPanel.Opacity = 1;
+            parentTopLevelPanel.IsEnabled = true;
 
             if (results == null || results.Length == 0)
             {

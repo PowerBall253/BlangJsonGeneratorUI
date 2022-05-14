@@ -121,8 +121,18 @@ namespace BlangJsonGenerator.Views
                     break;
             }
 
+            // Disable parent
+            var parentTopLevelPanel = parent.FindControl<Panel>("TopLevelPanel")!;
+            parentTopLevelPanel.IsEnabled = false;
+            parentTopLevelPanel.Opacity = 0.7;
+
             // Show window
             await msgbox.ShowDialog(parent);
+
+            // Re-enable parent
+            parentTopLevelPanel.Opacity = 1;
+            parentTopLevelPanel.IsEnabled = true;
+
             return _result;
         }
 
