@@ -13,7 +13,7 @@
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="-1"
         DragDrop.AllowDrop="True"
-        Closing="HandleClose">
+        Closing="HandleCloseAsync">
 
     <!-- Set MVVM -->
     <Design.DataContext>

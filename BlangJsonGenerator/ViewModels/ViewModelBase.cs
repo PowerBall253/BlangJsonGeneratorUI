@@ -1,8 +1,7 @@
 ﻿using ReactiveUI;
 
-namespace BlangJsonGenerator.ViewModels
+namespace BlangJsonGenerator.ViewModels;
+
+public class ViewModelBase : ReactiveObject
 {
-    public class ViewModelBase : ReactiveObject
-    {
-    }
 }

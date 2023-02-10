@@ -7,220 +7,209 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace BlangParser
+namespace BlangParser;
+
+/// <summary>
+/// BlangCrypt class
+/// </summary>
+public class BlangDecrypt
 {
     /// <summary>
-    /// BlangCrypt class
+    /// Encrypts or decrypts a blang file
     /// </summary>
-    public class BlangDecrypt
+    /// <param name="fileData">byte array contaning a blang file bytes</param>
+    /// <param name="internalPath">blang file's internal path</param>
+    /// <param name="decrypt">bool indicating if we wanna encrypt or decrypt</param>
+    /// <returns>Memory stream of the encrypted or decrypted blang file</returns>
+    public static MemoryStream? IdCrypt(byte[] fileData, string internalPath, bool decrypt)
     {
-        /// <summary>
-        /// Encrypts or decrypts a blang file
-        /// </summary>
-        /// <param name="fileData">byte array contaning a blang file bytes</param>
-        /// <param name="internalPath">blang file's internal path</param>
-        /// <param name="decrypt">bool indicating if we wanna encrypt or decrypt</param>
-        /// <returns>Memory stream of the encrypted or decrypted blang file</returns>
-        public static MemoryStream? IdCrypt(byte[] fileData, string internalPath, bool decrypt)
+        string keyDeriveStatic = "swapTeam\n";
+        byte[] fileSalt = new byte[0xC];
+
+        // Get fileSalt from file, or create a new one
+        if (decrypt)
         {
-            string keyDeriveStatic = "swapTeam\n";
-            byte[] fileSalt = new byte[0xC];
+            Buffer.BlockCopy(fileData, 0, fileSalt, 0, 0xC);
+        }
+        else
+        {
+            fileSalt = RandomNumberGenerator.GetBytes(0xC);
+        }
 
-            // Get fileSalt from file, or create a new one
-            if (decrypt)
-            {
-                Buffer.BlockCopy(fileData, 0, fileSalt, 0, 0xC);
-            }
-            else
-            {
-                fileSalt = RandomNumberGenerator.GetBytes(0xC);
-            }
+        byte[] keyDeriveStaticBytes = new byte[0xA];
+        Buffer.BlockCopy(Encoding.ASCII.GetBytes(keyDeriveStatic), 0, keyDeriveStaticBytes, 0, 0xA - 1);
+        keyDeriveStaticBytes[0xA - 1] = (byte)'\0';
 
-            byte[] keyDeriveStaticBytes = new byte[0xA];
-            Buffer.BlockCopy(Encoding.ASCII.GetBytes(keyDeriveStatic), 0, keyDeriveStaticBytes, 0, 0xA - 1);
-            keyDeriveStaticBytes[0xA - 1] = (byte)'\0';
+        // Generate the encryption key for AES using SHA256
+        byte[]? encKey = null;
 
-            // Generate the encryption key for AES using SHA256
-            byte[] encKey;
+        try
+        {
+            encKey = HashData(fileSalt, keyDeriveStaticBytes, Encoding.ASCII.GetBytes(internalPath), null);
+        }
+        catch
+        {
+            return null;
+        }
 
+        // Get IV for AES from the file, or create a new one
+        byte[] fileIV = new byte[0x10];
+
+        if (decrypt)
+        {
+            Buffer.BlockCopy(fileData, 0xC, fileIV, 0, 0x10);
+        }
+        else
+        {
+            fileIV = RandomNumberGenerator.GetBytes(0x10);
+        }
+
+        // Get plain text for AES
+        byte[]? fileText = null;
+        byte[]? hmac = null;
+
+        if (decrypt)
+        {
+            fileText = new byte[fileData.Length - 0x1C - 0x20];
+            Buffer.BlockCopy(fileData, 0x1C, fileText, 0, Buffer.ByteLength(fileText));
+
+            byte[] fileHmac = new byte[0x20];
+            Buffer.BlockCopy(fileData, fileData.Length - 0x20, fileHmac, 0, 0x20);
+
+            // Get HMAC from file data
             try
             {
-                encKey = HashData(fileSalt, keyDeriveStaticBytes, Encoding.ASCII.GetBytes(internalPath), null);
+                hmac = HashData(fileSalt, fileIV, fileText, encKey);
             }
             catch
             {
                 return null;
             }
 
-            // Get IV for AES from the file, or create a new one
-            byte[] fileIV = new byte[0x10];
-
-            if (decrypt)
+            // Make sure the file HMAC and the new HMAC are the same
+            if (!Utils.ArraysEqual(hmac, fileHmac))
             {
-                Buffer.BlockCopy(fileData, 0xC, fileIV, 0, 0x10);
+                return null;
             }
-            else
-            {
-                fileIV = RandomNumberGenerator.GetBytes(0x10);
-            }
+        }
+        else
+        {
+            fileText = fileData;
+        }
 
-            // Get plain text for AES
-            byte[] fileText;
-            byte[] hmac;
+        // Encrypt or decrypt the data using AES
+        byte[]? cryptedText = null;
 
-            if (decrypt)
-            {
-                fileText = new byte[fileData.Length - 0x1C - 0x20];
-                Buffer.BlockCopy(fileData, 0x1C, fileText, 0, fileText.Length);
+        try
+        {
+            byte[] pbEncKey = new byte[0x10];
+            Buffer.BlockCopy(encKey, 0, pbEncKey, 0, 0x10);
 
-                byte[] fileHmac = new byte[0x20];
-                Buffer.BlockCopy(fileData, fileData.Length - 0x20, fileHmac, 0, 0x20);
+            cryptedText = CryptData(decrypt, fileText, pbEncKey, fileIV);
+        }
+        catch
+        {
+            return null;
+        }
 
-                // Get HMAC from file data
-                try
-                {
-                    hmac = HashData(fileSalt, fileIV, fileText, encKey);
-                }
-                catch
-                {
-                    return null;
-                }
+        // Write the new file into a memory stream
+        MemoryStream cryptMemoryStream;
 
-                // Make sure the file HMAC and the new HMAC are the same
-                if (!Utils.ArraysEqual(hmac, fileHmac))
-                {
-                    return null;
-                }
-            }
-            else
-            {
-                fileText = fileData;
-            }
-
-            // Encrypt or decrypt the data using AES
-            byte[] cryptedText;
-
+        if (decrypt)
+        {
+            cryptMemoryStream = new MemoryStream(cryptedText);
+        }
+        else
+        {
             try
             {
-                byte[] pbEncKey = new byte[0x10];
-                Buffer.BlockCopy(encKey, 0, pbEncKey, 0, 0x10);
-
-                cryptedText = CryptData(decrypt, fileText, pbEncKey, fileIV);
+                hmac = HashData(fileSalt, fileIV, cryptedText, encKey);
             }
             catch
             {
                 return null;
             }
 
-            // Write the new file into a memory stream
-            MemoryStream cryptMemoryStream;
-
-            if (decrypt)
-            {
-                cryptMemoryStream = new MemoryStream(cryptedText);
-            }
-            else
-            {
-                try
-                {
-                    hmac = HashData(fileSalt, fileIV, cryptedText, encKey);
-                }
-                catch
-                {
-                    return null;
-                }
-
-                cryptMemoryStream = new MemoryStream(fileSalt.Length + fileIV.Length + cryptedText.Length + hmac.Length);
-                cryptMemoryStream.Write(fileSalt, 0, fileSalt.Length);
-                cryptMemoryStream.Write(fileIV, 0, fileIV.Length);
-                cryptMemoryStream.Write(cryptedText, 0, cryptedText.Length);
-                cryptMemoryStream.Write(hmac, 0, hmac.Length);
-            }
-
-            return cryptMemoryStream;
+            cryptMemoryStream = new MemoryStream(fileSalt.Length + fileIV.Length + cryptedText.Length + hmac.Length);
+            cryptMemoryStream.Write(fileSalt, 0, fileSalt.Length);
+            cryptMemoryStream.Write(fileIV, 0, fileIV.Length);
+            cryptMemoryStream.Write(cryptedText, 0, cryptedText.Length);
+            cryptMemoryStream.Write(hmac, 0, hmac.Length);
         }
 
-        /// <summary>
-        /// Hashes or gets hmac of the given byte array
-        /// </summary>
-        /// <param name="pbBuf1">first byte array to hash</param>
-        /// <param name="pbBuf2">second byte array to hash</param>
-        /// <param name="pbBuf3">third byte array to hash</param>
-        /// <param name="pbSecret">key for hmac generation, can be null</param>
-        /// <returns>hash or hmac in bytes</returns>
-        private static byte[] HashData(byte[] pbBuf1, byte[] pbBuf2, byte[] pbBuf3, byte[]? pbSecret)
+        return cryptMemoryStream;
+    }
+
+    /// <summary>
+    /// Hashes or gets hmac of the given byte array
+    /// </summary>
+    /// <param name="pbBuf1">first byte array to hash</param>
+    /// <param name="pbBuf2">second byte array to hash</param>
+    /// <param name="pbBuf3">third byte array to hash</param>
+    /// <param name="pbSecret">key for hmac generation, can be null</param>
+    /// <returns>hash or hmac in bytes</returns>
+    private static byte[] HashData(byte[] pbBuf1, byte[] pbBuf2, byte[] pbBuf3, byte[]? pbSecret)
+    {
+        if (pbSecret == null)
         {
-            if (pbSecret == null)
-            {
-                using (var sha256 = SHA256.Create())
-                {
-                    sha256.TransformBlock(pbBuf1, 0, pbBuf1.Length, null, 0);
-                    sha256.TransformBlock(pbBuf2, 0, pbBuf2.Length, null, 0);
-                    sha256.TransformBlock(pbBuf3, 0, pbBuf3.Length, null, 0);
-                    sha256.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+            using var sha256 = SHA256.Create();
 
-                    return sha256.Hash!;
-                }
-            }
-            else
-            {
-                using (var hmac = new HMACSHA256(pbSecret))
-                {
-                    hmac.TransformBlock(pbBuf1, 0, pbBuf1.Length, null, 0);
-                    hmac.TransformBlock(pbBuf2, 0, pbBuf2.Length, null, 0);
-                    hmac.TransformBlock(pbBuf3, 0, pbBuf3.Length, null, 0);
-                    hmac.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+            sha256.TransformBlock(pbBuf1, 0, pbBuf1.Length, null, 0);
+            sha256.TransformBlock(pbBuf2, 0, pbBuf2.Length, null, 0);
+            sha256.TransformBlock(pbBuf3, 0, pbBuf3.Length, null, 0);
+            sha256.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 
-                    return hmac.Hash!;
-                }
-            }
+            return sha256.Hash!;
         }
-
-        /// <summary>
-        /// Encrypts or decrypts data using AES
-        /// </summary>
-        /// <param name="decrypt">bool indicating if we wanna encrypt or decrypt</param>
-        /// <param name="pbInput">data to encrypt/decrypt</param>
-        /// <param name="pbEncKey">AES key</param>
-        /// <param name="pbIV">AES IV</param>
-        /// <returns>encrypted/decrypted data bytes</returns>
-        private static byte[] CryptData(bool decrypt, byte[] pbInput, byte[] pbEncKey, byte[] pbIV)
+        else
         {
-            using (var aesAlg = Aes.Create())
-            {
-                aesAlg.Key = pbEncKey;
-                aesAlg.IV = pbIV;
+            using var hmac = new HMACSHA256(pbSecret);
 
-                if (decrypt)
-                {
-                    ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+            hmac.TransformBlock(pbBuf1, 0, pbBuf1.Length, null, 0);
+            hmac.TransformBlock(pbBuf2, 0, pbBuf2.Length, null, 0);
+            hmac.TransformBlock(pbBuf3, 0, pbBuf3.Length, null, 0);
+            hmac.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 
-                    using (var msDecrypt = new MemoryStream())
-                    {
-                        using (var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Write))
-                        {
-                            csDecrypt.Write(pbInput, 0, pbInput.Length);
-                            csDecrypt.FlushFinalBlock();
-                            return msDecrypt.ToArray();
-                        }
-                    }
-                }
-                else
-                {
-                    ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+            return hmac.Hash!;
+        }
+    }
 
-                    using (var msEncrypt = new MemoryStream())
-                    {
-                        using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
-                        {
-                            csEncrypt.Write(pbInput, 0, pbInput.Length);
-                            csEncrypt.FlushFinalBlock();
+    /// <summary>
+    /// Encrypts or decrypts data using AES
+    /// </summary>
+    /// <param name="decrypt">bool indicating if we wanna encrypt or decrypt</param>
+    /// <param name="pbInput">data to encrypt/decrypt</param>
+    /// <param name="pbEncKey">AES key</param>
+    /// <param name="pbIV">AES IV</param>
+    /// <returns>encrypted/decrypted data bytes</returns>
+    private static byte[] CryptData(bool decrypt, byte[] pbInput, byte[] pbEncKey, byte[] pbIV)
+    {
+        using var aesAlg = Aes.Create();
+        aesAlg.Key = pbEncKey;
+        aesAlg.IV = pbIV;
 
-                            return msEncrypt.ToArray();
-                        }
-                    }
-                }
-            }
+        if (decrypt)
+        {
+            ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+            using var msDecrypt = new MemoryStream();
+            using var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Write);
+
+            csDecrypt.Write(pbInput, 0, pbInput.Length);
+            csDecrypt.FlushFinalBlock();
+            return msDecrypt.ToArray();
+        }
+        else
+        {
+            ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+            using var msEncrypt = new MemoryStream();
+            using var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write);
+
+            csEncrypt.Write(pbInput, 0, pbInput.Length);
+            csEncrypt.FlushFinalBlock();
+
+            return msEncrypt.ToArray();
         }
     }
 }

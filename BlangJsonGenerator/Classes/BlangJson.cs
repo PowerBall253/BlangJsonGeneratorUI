@@ -1,26 +1,25 @@
 using System.Collections.Generic;
 
-namespace BlangJsonGenerator.Classes
+namespace BlangJsonGenerator.Classes;
+
+public class BlangJson
 {
-    public class BlangJson
-    {
-        public List<BlangJsonString> Strings { get; set; }
+    public List<BlangJsonString> Strings { get; set; }
 
-        public BlangJson()
-        {
-            Strings = new List<BlangJsonString>();
-        }
+    public BlangJson()
+    {
+        Strings = new List<BlangJsonString>();
     }
+}
 
-    public class BlangJsonString
+public class BlangJsonString
+{
+    public string Name { get; set; }
+    public string Text { get; set; }
+
+    public BlangJsonString()
     {
-        public string Name { get; set; }
-        public string Text { get; set; }
-
-        public BlangJsonString()
-        {
-            Name = "";
-            Text = "";
-        }
+        Name = "";
+        Text = "";
     }
 }
