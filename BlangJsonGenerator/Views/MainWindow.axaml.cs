@@ -276,7 +276,7 @@ public partial class MainWindow : Window
             e.Cancel = true;
 
             // Display confirmation
-            var res = await MessageBox.Show(this, "Confirm close", "Are you sure you want to close?\nUnsaved changes will be lost.", MessageBox.MessageButtons.YesCancel);
+            var res = await MessageBox.ShowAsync(this, "Confirm close", "Are you sure you want to close?\nUnsaved changes will be lost.", MessageBox.MessageButtons.YesCancel);
 
             // Close the window
             if (res == MessageBox.MessageResult.Yes)

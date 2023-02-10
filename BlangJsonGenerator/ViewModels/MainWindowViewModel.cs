@@ -85,7 +85,7 @@ public class MainWindowViewModel : ViewModelBase
     private static async Task<string> OpenFileDialogAsync(string title, List<string> extensions, string extensionsDescription)
     {
         // Open file dialog
-        var fileDialog = new OpenFileDialogAsync
+        var fileDialog = new OpenFileDialog
         {
             Title = title,
             AllowMultiple = false,
